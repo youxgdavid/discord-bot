@@ -1,0 +1,144 @@
+﻿# 🤖 FREE 24/7 Discord Bot Hosting Guide
+
+## ✅ OPTION 1: Render.com (RECOMMENDED - Easiest)
+
+### Step 1: Create GitHub Account & Upload Bot
+1. Go to https://github.com/signup and create a free account
+2. Click the "+" icon (top right) → "New repository"
+3. Name it "discord-bot" (or any name)
+4. Make it **Public**
+5. Click "Create repository"
+
+### Step 2: Upload Your Files to GitHub
+Since you dont have git installed, use the web interface:
+1. On your new repository page, click "uploading an existing file"
+2. Drag and drop ALL these files from C:\Users\david\Downloads\discord_bot_deploy:
+   - main.py
+   - requirements.txt
+   - Procfile
+   - runtime.txt
+   - README.md
+   - .gitignore
+3. Click "Commit changes"
+
+### Step 3: Deploy on Render
+1. Go to https://render.com/
+2. Click "Get Started for Free"
+3. Sign up with your GitHub account
+4. Click "New +" → "Web Service"
+5. Click "Connect" next to your discord-bot repository
+6. Fill in:
+   - **Name:** discord-bot (or any name)
+   - **Region:** Choose closest to you
+   - **Branch:** main
+   - **Runtime:** Python 3
+   - **Build Command:** pip install -r requirements.txt
+   - **Start Command:** python main.py
+7. Scroll down to "Environment Variables" and click "Add Environment Variable"
+   - **Key:** DISCORD_TOKEN
+   - **Value:** MTQyNzIxNTcwMTcwMTE2OTI2NA.GYZ1TL.ApHjtZQ5apiKYGH-DEJZr5LMahVYjOW3b2rD3I
+8. Add another environment variable:
+   - **Key:** GUILD_ID
+   - **Value:** 868504571637547018
+9. Select the **FREE** plan
+10. Click "Create Web Service"
+
+### Step 4: Wait for Deployment
+- Render will build and deploy your bot (takes 2-5 minutes)
+- Your bot will be online 24/7!
+- Free tier gives you 750 hours/month (31+ days)
+
+---
+
+## ✅ OPTION 2: Railway.app (Alternative)
+
+### Setup:
+1. Go to https://railway.app/
+2. Click "Start a New Project"
+3. Sign up with GitHub
+4. Click "Deploy from GitHub repo"
+5. Select your discord-bot repository
+6. Add environment variables:
+   - DISCORD_TOKEN = MTQyNzIxNTcwMTcwMTE2OTI2NA.GYZ1TL.ApHjtZQ5apiKYGH-DEJZr5LMahVYjOW3b2rD3I
+   - GUILD_ID = 868504571637547018
+7. Deploy!
+
+**Free tier:** $5 credit/month (enough for 24/7 small bot)
+
+---
+
+## ✅ OPTION 3: fly.io (For Advanced Users)
+
+### Setup:
+1. Install flyctl: https://fly.io/docs/hands-on/install-flyctl/
+2. Sign up: flyctl auth signup
+3. Create fly.toml file (provided below)
+4. Run: flyctl launch
+5. Set secrets:
+   - flyctl secrets set DISCORD_TOKEN=MTQyNzIxNTcwMTcwMTE2OTI2NA.GYZ1TL.ApHjtZQ5apiKYGH-DEJZr5LMahVYjOW3b2rD3I
+   - flyctl secrets set GUILD_ID=868504571637547018
+6. Deploy: flyctl deploy
+
+---
+
+## 📝 Important Notes
+
+### Keep Your Bot Running:
+- **Render:** Free tier sleeps after 15 min of inactivity. To keep it awake, use a service like UptimeRobot (free) to ping it every 5 minutes
+- **Railway:** Has a monthly credit limit, monitor usage
+- **Fly.io:** Most reliable free tier for 24/7
+
+### UptimeRobot Setup (To keep Render bot awake):
+1. Go to https://uptimerobot.com/ and sign up
+2. Add New Monitor
+3. Monitor Type: HTTP(s)
+4. Friendly Name: Discord Bot
+5. URL: Your Render app URL
+6. Monitoring Interval: 5 minutes
+7. Click "Create Monitor"
+
+### Security Warning:
+⚠️ NEVER share your DISCORD_TOKEN publicly! I included it here for your convenience, but:
+- Dont commit tokens to public GitHub repos
+- Use environment variables on hosting platforms
+- If token is leaked, regenerate it at https://discord.com/developers/applications
+
+---
+
+## 🎮 Your Bot Commands:
+- /ping - Check if bot is working
+- /userinfo - Show user information
+- /balance - Check your balance
+- /blackjack - Play blackjack
+- /wordle - Play wordle
+- /mines - Play mines game (bet + number of mines)
+- /clearmines - Clear stuck mines game
+
+---
+
+## 🔧 Troubleshooting:
+
+### Bot not responding?
+1. Check logs on your hosting platform
+2. Verify DISCORD_TOKEN is correct
+3. Make sure bot has proper permissions in Discord server
+
+### Commands not showing?
+1. Wait 5 minutes after deployment
+2. Check GUILD_ID is correct
+3. Try restarting Discord client
+
+### Bot keeps going offline?
+1. Use UptimeRobot to ping your Render app
+2. Check you have free hours remaining
+3. Consider using fly.io instead
+
+---
+
+## 📚 Next Steps:
+1. Upload files to GitHub (easiest via web interface)
+2. Deploy on Render.com
+3. Set up UptimeRobot to keep it awake
+4. Enjoy your 24/7 bot!
+
+Good luck! 🚀

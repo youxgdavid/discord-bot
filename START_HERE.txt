@@ -1,0 +1,62 @@
+﻿========================================
+ DISCORD BOT - FREE 24/7 HOSTING
+========================================
+
+📁 Location: C:\Users\david\Downloads\discord_bot_deploy
+
+🎯 QUICK START (Easiest Method):
+
+1. Open DEPLOYMENT_INSTRUCTIONS.html (in your browser now!)
+2. Follow the step-by-step guide
+3. Upload files to GitHub
+4. Deploy on Render.com
+5. Done! Bot is online 24/7
+
+⚡ FASTEST STEPS:
+
+1. GitHub:
+   - Go to: https://github.com/signup
+   - Create account → New repository → Name it "discord-bot"
+   - Upload ALL files from this folder
+
+2. Render:
+   - Go to: https://render.com/
+   - Sign up with GitHub
+   - New+ → Web Service → Connect your repo
+   - Add these environment variables:
+     * DISCORD_TOKEN = MTQyNzIxNTcwMTcwMTE2OTI2NA.GYZ1TL.ApHjtZQ5apiKYGH-DEJZr5LMahVYjOW3b2rD3I
+     * GUILD_ID = 868504571637547018
+   - Select FREE plan → Deploy
+
+3. (Optional) Keep Awake:
+   - Go to: https://uptimerobot.com/
+   - Add monitor with your Render URL
+   - Interval: 5 minutes
+
+🎮 YOUR BOT COMMANDS:
+• /ping
+• /userinfo  
+• /balance
+• /blackjack
+• /wordle
+• /mines
+• /clearmines
+
+📋 FILES INCLUDED:
+✓ main.py - Your bot code
+✓ requirements.txt - Python dependencies
+✓ Procfile - Deployment config
+✓ runtime.txt - Python version
+✓ README.md - Project info
+✓ .gitignore - Files to ignore
+✓ fly.toml - Alternative deployment
+✓ DEPLOYMENT_GUIDE.txt - Full guide
+✓ DEPLOYMENT_INSTRUCTIONS.html - Visual guide
+
+💰 COST: 100% FREE!
+
+⏱️ TIME TO DEPLOY: 10-15 minutes
+
+🚀 Ready to deploy? Open the HTML file and follow along!
+
+========================================

@@ -1,0 +1,19 @@
+﻿app = "discord-bot"
+primary_region = "iad"
+
+[build]
+
+[env]
+  PORT = "8080"
+
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
