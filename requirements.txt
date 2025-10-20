@@ -1,0 +1,5 @@
+discord.py
+aiohttp
+# add other requirements your project needs (e.g., python-dotenv)
+discord.py>=2.3.0
+aiohttp>=3.8.0
