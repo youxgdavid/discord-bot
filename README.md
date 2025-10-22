@@ -8,6 +8,7 @@ This bot includes:
 - Balance system
 - **Tower Game** Coming Soon
 
+## Commands
 - /ping
 - /userinfo
 - /balance
@@ -22,4 +23,5 @@ This bot includes:
 3. Run: python main.py
 
 ## Bot is still in development any bugs please bare with.
+
 
