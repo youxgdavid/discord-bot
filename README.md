@@ -6,8 +6,8 @@ This bot includes:
 - Mines game (minesweeper with betting)
 - User info commands
 - Balance system
+- **Tower Game** Coming Soon
 
-## Commands
 - /ping
 - /userinfo
 - /balance
@@ -22,3 +22,4 @@ This bot includes:
 3. Run: python main.py
 
 ## Bot is still in development any bugs please bare with.
+
