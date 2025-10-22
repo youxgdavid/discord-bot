@@ -1,5 +1,3 @@
-# Copy this entire code and replace your main.py in Replit
-
 import discord
 from discord import app_commands
 from discord.ui import Button, View
@@ -10,10 +8,26 @@ import random
 import json
 import asyncio
 import aiohttp
-# from keep_alive import keep_alive
+from flask import Flask
+from threading import Thread
 
-# Start the keep-alive server
-# keep_alive()
+# Create Flask app for Render
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Discord bot is online!"
+
+def run():
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
+# Start the web server
+keep_alive()
 
 intents = discord.Intents.default()
 intents.members = True  # Required for member info like roles/join date
@@ -76,7 +90,7 @@ async def on_ready():
         print("✅ Slash commands synced globally (may take up to 1 hour to appear)")
     
     print("Commands ready: /ping, /userinfo, /balance, /blackjack, /wordle, /mines, /clearmines")
-    print("🤖 Bot is now running 24/7 on Replit!")
+    print("🤖 Bot is now running 24/7 on Render!")
 
 # --- /ping command ---
 @tree.command(name="ping", description="Check if the bot is working")
@@ -981,8 +995,7 @@ async def clearmines(interaction: discord.Interaction):
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 if not TOKEN:
-    raise ValueError("❌ No token found! Add DISCORD_TOKEN in Replit Secrets.")
+    raise ValueError("❌ No token found! Add DISCORD_TOKEN in Render environment variables.")
 print("Loaded token:", "✅ Found" if TOKEN else "❌ Missing")
 
 client.run(TOKEN)
-
