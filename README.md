@@ -20,3 +20,5 @@ This bot includes:
 1. Set DISCORD_TOKEN environment variable
 2. Set GUILD_ID environment variable (optional)
 3. Run: python main.py
+
+## Bot is still in development any bugs please bare with.
