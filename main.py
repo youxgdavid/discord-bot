@@ -990,6 +990,145 @@ async def clearmines(interaction: discord.Interaction):
         await interaction.response.send_message("Done! Your mines game has been cleared!", ephemeral=True)
     else:
         await interaction.response.send_message("You do not have an active mines game.", ephemeral=True)
+    # --- TOWER GAME ---
+tower_games = {}
+
+# Multipliers for an 8-level, 3-tile tower game
+TOWER_MULTIPLIERS = [1.45, 2.18, 3.27, 4.91, 7.36, 11.04, 16.56, 24.84]
+
+class TowerGame:
+    def __init__(self, user_id, bet_amount):
+        self.user_id = user_id
+        self.bet_amount = bet_amount
+        self.levels = 8
+        self.tiles_per_level = 3
+        self.current_level = 0
+        self.game_over = False
+        self.won = False
+        
+        # Pre-generate the skull position for each level
+        import random
+        self.skull_positions = {level: random.randint(0, self.tiles_per_level - 1) for level in range(self.levels)}
+
+    def select_tile(self, choice):
+        if self.game_over:
+            return None
+
+        is_skull = (self.skull_positions[self.current_level] == choice)
+        
+        if is_skull:
+            self.game_over = True
+            self.won = False
+            return False
+        else:
+            self.current_level += 1
+            if self.current_level >= self.levels: # Reached the top
+                self.game_over = True
+                self.won = True
+            return True
+
+    def get_current_multiplier(self):
+        if self.game_over and not self.won:
+            return 0.0
+        if self.current_level == 0:
+            return 1.0
+        return TOWER_MULTIPLIERS[self.current_level - 1]
+
+    def cash_out(self):
+        if self.game_over or self.current_level == 0:
+            return 0
+        
+        self.game_over = True
+        self.won = True
+        winnings = int(self.bet_amount * self.get_current_multiplier())
+        return winnings
+
+class TowerButton(Button):
+    def __init__(self, level, choice):
+        # We create the UI top-to-bottom, so row 0 is the highest level (level 7)
+        super().__init__(style=discord.ButtonStyle.secondary, label="❓", row=7-level)
+        self.level = level
+        self.choice = choice
+        # Disable all buttons except the first level initially
+        self.disabled = (level != 0)
+
+    async def callback(self, interaction: discord.Interaction):
+        game = tower_games.get(interaction.user.id)
+        if not game or game.user_id != interaction.user.id:
+            await interaction.response.send_message("This isn't your game!", ephemeral=True)
+            return
+
+        if game.game_over:
+            await interaction.response.send_message("The game is already over.", ephemeral=True)
+            return
+        
+        if self.level != game.current_level:
+            await interaction.response.send_message("You must play the current level.", ephemeral=True)
+            return
+
+        is_safe = game.select_tile(self.choice)
+        view = self.view
+
+        if is_safe:
+            self.style = discord.ButtonStyle.success
+            self.label = "💎"
+            
+            for child in view.children:
+                if isinstance(child, TowerButton) and child.level == self.level:
+                    child.disabled = True
+            
+            if game.game_over and game.won: # Reached the top
+                winnings = int(game.bet_amount * TOWER_MULTIPLIERS[-1])
+                profit = winnings - game.bet_amount
+                update_balance(interaction.user.id, profit)
+                
+                embed = discord.Embed(title="🎉 TOWER COMPLETE! 🎉", description=f"You reached the top and won **${winnings:,}**!", color=discord.Color.gold())
+                embed.add_field(name="Final Multiplier", value=f"{TOWER_MULTIPLIERS[-1]:.2f}x", inline=True)
+                await interaction.response.edit_message(embed=embed, view=view)
+                del tower_games[interaction.user.id]
+                return
+
+            for child in view.children:
+                if isinstance(child, TowerButton) and child.level == game.current_level:
+                    child.disabled = False
+            
+            multiplier = game.get_current_multiplier()
+            potential_win = int(game.bet_amount * multiplier)
+            
+            embed = discord.Embed(title="🗼 Tower Climb", description=f"You climbed to **Level {game.current_level + 1}**!", color=discord.Color.green())
+            embed.add_field(name="Bet Amount", value=f"${game.bet_amount:,}", inline=True)
+            embed.add_field(name="Multiplier", value=f"**{multiplier:.2f}x**", inline=True)
+            embed.add_field(name="Potential Win", value=f"**${potential_win:,}**", inline=True)
+            embed.set_footer(text="Pick a tile on the next level or cash out!")
+            
+            await interaction.response.edit_message(embed=embed, view=view)
+
+        else: # Hit a skull
+            for child in view.children:
+                if isinstance(child, TowerButton) and child.level == self.level:
+                    child.disabled = True
+                    if child.choice == game.skull_positions[self.level]:
+                        child.style = discord.ButtonStyle.danger
+                        child.label = "💀"
+                    else:
+                        child.style = discord.ButtonStyle.success
+                        child.label = "💎"
+            
+            for child in view.children:
+                child.disabled = True
+
+            update_balance(interaction.user.id, -game.bet_amount)
+            embed = discord.Embed(title="💀 BOOM! You hit a skull!", description=f"You lost your bet of **${game.bet_amount:,}**.", color=discord.Color.red())
+            await interaction.response.edit_message(embed=embed, view=view)
+            del tower_games[interaction.user.id]
+
+class TowerCashOutButton(Button):
+    def __init__(self):
+        super().__init__(style=discord.ButtonStyle.success, label="💰 Cash Out", row=8)
+
+    async def callback(self, interaction: discord.Interaction):
+        game = tower_games.get(interaction.user.id)
+
 
 # --- Run the bot ---
 TOKEN = os.getenv("DISCORD_TOKEN")
