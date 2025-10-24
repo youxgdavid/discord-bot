@@ -1,6 +1,6 @@
 # 🎮 My Discord Bot
 
-![Bot Demo](https://androiddevhub.com/tools/link-converter/gif-to-link.php?id=251)
+![Bot Demo](https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHoxZ28xa2RlaHBra3NrOWRyZjQ3NWtjc3gycmdmbHR4YW1kbWNrZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Kb3VjUXG7pHLPsTUbK/giphy.gif)
 
 A fun and interactive Discord bot with games, utilities, and a balance system.  
 Currently in **development** ⚠️ — please bear with any bugs!  
@@ -37,6 +37,7 @@ Currently in **development** ⚠️ — please bear with any bugs!
 ```bash
 DISCORD_TOKEN=<your_bot_token>
 GUILD_ID=<your_guild_id>  # optional for faster command sync
+
 
 
 
