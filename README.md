@@ -1,6 +1,6 @@
 # 🎮 My Discord Bot
 
-![Bot Demo](https://YOUR_GIF_URL_HERE.gif)
+![Bot Demo](file:///C:/Users/david/Videos/Recording%202025-10-24%20112035.gif)
 
 A fun and interactive Discord bot with games, utilities, and a balance system.  
 Currently in **development** ⚠️ — please bear with any bugs!  
@@ -37,5 +37,6 @@ Currently in **development** ⚠️ — please bear with any bugs!
 ```bash
 DISCORD_TOKEN=<your_bot_token>
 GUILD_ID=<your_guild_id>  # optional for faster command sync
+
 
 
