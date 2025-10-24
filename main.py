@@ -73,25 +73,6 @@ def can_afford(user_id, amount):
     """Check if player can afford the amount"""
     return get_balance(user_id) >= amount
 
-# --- Bot ready event ---
-@client.event
-async def on_ready():
-    print(f"✅ Logged in as {client.user}")
-    
-    # Sync commands to a specific guild for instant updates, or globally if no guild ID is set
-    guild_id = os.getenv("GUILD_ID", "868504571637547018")  # Default to your server ID
-    if guild_id:
-        guild = discord.Object(id=int(guild_id))
-        tree.copy_global_to(guild=guild)
-        await tree.sync(guild=guild)
-        print(f"✅ Slash commands synced to guild {guild_id} instantly!")
-    else:
-        await tree.sync()
-        print("✅ Slash commands synced globally (may take up to 1 hour to appear)")
-    
-    print("Commands ready: /ping, /userinfo, /balance, /blackjack, /wordle, /mines, /clearmines, /Tower")
-    print("🤖 Bot is now running 24/7 on Render!")
-
 # --- /ping command ---
 @tree.command(name="ping", description="Check if the bot is working")
 async def ping(interaction: discord.Interaction):
@@ -1322,9 +1303,27 @@ async def leaderboard(interaction: discord.Interaction):
 @client.event
 async def on_ready():
     print(f"✅ Logged in as {client.user}")
+
     # Start daily bonus loop
-    client.loop.create_task(award_daily_bonus())
-    # Keep existing on_ready logic below if present
+    try:
+        client.loop.create_task(award_daily_bonus())
+    except Exception as e:
+        print(f"[Leaderboard Bonus Task Error] {e}")
+
+    # Sync commands (to your guild for instant updates)
+    import os
+    guild_id = os.getenv("GUILD_ID", "868504571637547018")
+    try:
+        if guild_id:
+            guild = discord.Object(id=int(guild_id))
+            tree.copy_global_to(guild=guild)
+            await tree.sync(guild=guild)
+            print(f"✅ Slash commands synced instantly to guild {868504571637547018}")
+        else:
+            await tree.sync()
+            print("🌍 Synced slash commands globally (may take up to 1 hour)")
+    except Exception as e:
+        print(f"⚠️ Command sync error: {e}")
 
 # --- Run the bot ---
 TOKEN = os.getenv("DISCORD_TOKEN")
