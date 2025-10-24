@@ -32,7 +32,7 @@ Currently in **development** ⚠️ — please bear with any bugs!
 
 ## 💬 Connect with Me
 
-[![Discord](https://img.shields.io/badge/Discord-Message%20Me-7289DA?logo=discord&logoColor=white)](https://discord.com/users/YOUR_DISCORD_ID)
+[![Discord](https://img.shields.io/badge/Discord-Message%20Me-7289DA?logo=discord&logoColor=white)](https://discord.com/users/868504267927986197)
 
 ---
 
@@ -42,6 +42,7 @@ Currently in **development** ⚠️ — please bear with any bugs!
 ```bash
 DISCORD_TOKEN=<your_bot_token>
 GUILD_ID=<your_guild_id>  # optional for faster command sync
+
 
 
 
