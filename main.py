@@ -89,7 +89,7 @@ async def on_ready():
         await tree.sync()
         print("✅ Slash commands synced globally (may take up to 1 hour to appear)")
     
-    print("Commands ready: /ping, /userinfo, /balance, /blackjack, /wordle, /mines, /clearmines")
+    print("Commands ready: /ping, /userinfo, /balance, /blackjack, /wordle, /mines, /clearmines, /Tower")
     print("🤖 Bot is now running 24/7 on Render!")
 
 # --- /ping command ---
