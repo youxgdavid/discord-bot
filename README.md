@@ -16,14 +16,19 @@ Currently in **development** ⚠️ — please bear with any bugs!
 | Wordle | ![Status](https://img.shields.io/badge/✔-Available-brightgreen) |
 | Mines (Minesweeper Betting) | ![Status](https://img.shields.io/badge/✔-Available-brightgreen) |
 | Tower Game | ![Status](https://img.shields.io/badge/⌛-Coming%20Soon-orange) |
+### ⚡ Utility & Game Commands
 
-### ⚡ Utility Commands
+
 | Command | Description |
 |---------|-------------|
 | `/ping` | Check bot latency |
 | `/userinfo` | Display user information |
 | `/balance` | Show your balance |
 | `/clearmines` | Clear your mines |
+| `/blackjack` | Play a game of Blackjack |
+| `/wordle` | Play Wordle |
+| `/mines` | Play Mines (Minesweeper Betting) |
+
 
 ### 💰 Economy
 - Integrated balance system for games and bets.  
@@ -42,6 +47,7 @@ Currently in **development** ⚠️ — please bear with any bugs!
 ```bash
 DISCORD_TOKEN=<your_bot_token>
 GUILD_ID=<your_guild_id>  # optional for faster command sync
+
 
 
 
