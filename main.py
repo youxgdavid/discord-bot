@@ -10,8 +10,6 @@ import asyncio
 import aiohttp
 from flask import Flask
 from threading import Thread
-git commit --allow-empty -m "Restart Render bot"
-git push
 
 # Create Flask app for Render
 app = Flask(__name__)
@@ -1336,5 +1334,6 @@ if not TOKEN:
 print("Loaded token:", "✅ Found" if TOKEN else "❌ Missing")
 
 client.run(TOKEN)
+
 
 
