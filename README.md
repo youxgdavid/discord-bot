@@ -29,6 +29,11 @@ Currently in **development** ⚠️ — please bear with any bugs!
 - Integrated balance system for games and bets.  
 - Earn and spend coins across different activities.  
 
+
+## 💬 Connect with Me
+
+[![Discord](https://img.shields.io/badge/Discord-Message%20Me-7289DA?logo=discord&logoColor=white)](https://discord.com/users/YOUR_DISCORD_ID)
+
 ---
 
 ## 🛠 Setup
@@ -37,6 +42,7 @@ Currently in **development** ⚠️ — please bear with any bugs!
 ```bash
 DISCORD_TOKEN=<your_bot_token>
 GUILD_ID=<your_guild_id>  # optional for faster command sync
+
 
 
 
