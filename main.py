@@ -1019,7 +1019,7 @@ def can_afford(user_id, amount):
     return get_balance(user_id) >= amount
 
 # --- FIXED TOWER GAME SECTION ---
-TOWER_MULTIPLIERS = [1.45, 2.18, 3.27, 4.91, 7.36, 11.04, 16.56, 24.84]
+TOWER_MULTIPLIERS = [1.2, 1.5, 2.0, 3.0, 5.0, 10.0]
 tower_games = {}
 
 class TowerGame:
