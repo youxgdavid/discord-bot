@@ -1174,16 +1174,17 @@ class TowerView(View):
 @tree.command(name="tower", description="Play Tower — pick safe tiles and climb to the top!")
 @app_commands.describe(bet="Amount to bet (minimum 100)")
 async def tower(interaction: discord.Interaction, bet: int = 100):
+        await interaction.response.defer(thinking=True)
     try:
         if bet < 100:
-            await interaction.response.send_message("❌ Minimum bet is $100!", ephemeral=True)
+            await interaction.edit_original_response(("❌ Minimum bet is $100!", ephemeral=True)
             return
         if bet > 1000000:
-            await interaction.response.send_message("❌ Maximum bet is $1,000,000!", ephemeral=True)
+            await interaction.edit_original_response(("❌ Maximum bet is $1,000,000!", ephemeral=True)
             return
         if not can_afford(interaction.user.id, bet):
             balance = get_balance(interaction.user.id)
-            await interaction.response.send_message(f"❌ You can't afford that bet! Your balance: ${balance:,}", ephemeral=True)
+            await interaction.edit_original_response((f"❌ You can't afford that bet! Your balance: ${balance:,}", ephemeral=True)
             return
 
         update_balance(interaction.user.id, -bet)
@@ -1199,10 +1200,10 @@ async def tower(interaction: discord.Interaction, bet: int = 100):
         embed.add_field(name="Current Multiplier", value="**1.00x**", inline=True)
         embed.add_field(name="Potential Top Win", value=f"**${int(bet * TOWER_MULTIPLIERS[-1]):,}**", inline=True)
         embed.set_footer(text="Pick one tile per level. Cash out anytime to keep your winnings.")
-        await interaction.response.send_message(embed=embed, view=view)
+       await interaction.edit_original_response((embed=embed, view=view)
     except Exception as e:
         print(f"[TOWER ERROR] {type(e).__name__}: {e}")
-        await interaction.response.send_message("⚠️ An error occurred starting your Tower game. Check logs.", ephemeral=True)
+       await interaction.edit_original_response(("⚠️ An error occurred starting your Tower game. Check logs.", ephemeral=True)
 
 
 
