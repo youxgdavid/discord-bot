@@ -1175,6 +1175,9 @@ class TowerView(View):
 @app_commands.describe(bet="Amount to bet (minimum 100)")
 async def tower(interaction: discord.Interaction, bet: int = 100):
         await interaction.response.defer(thinking=True)
+
+
+
     try:
         if bet < 100:
             await interaction.edit_original_response(("❌ Minimum bet is $100!", ephemeral=True)
