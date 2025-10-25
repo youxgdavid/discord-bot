@@ -1018,15 +1018,36 @@ def update_balance(user_id, amount):
 def can_afford(user_id, amount):
     return get_balance(user_id) >= amount
 
-# --- FIXED TOWER GAME SECTION ---
+import discord
+from discord import app_commands
+from discord.ui import Button, View
+import random
+
+# Tower multipliers
 TOWER_MULTIPLIERS = [1.2, 1.5, 2.0, 3.0, 5.0, 10.0]
+
+# Active games
 tower_games = {}
 
+# Dummy balance functions (replace with your real ones)
+def can_afford(user_id, amount):
+    # Replace with your balance check logic
+    return True
+
+def get_balance(user_id):
+    # Replace with your balance retrieval logic
+    return 10000
+
+def update_balance(user_id, amount):
+    # Replace with your balance update logic
+    pass
+
+# Tower game class
 class TowerGame:
     def __init__(self, user_id, bet_amount):
         self.user_id = user_id
         self.bet_amount = bet_amount
-        self.levels = 8
+        self.levels = 6
         self.tiles_per_level = 3
         self.current_level = 0
         self.game_over = False
@@ -1062,9 +1083,10 @@ class TowerGame:
         self.won = True
         return int(self.bet_amount * self.get_current_multiplier())
 
+# Buttons
 class TowerButton(Button):
     def __init__(self, level, choice):
-        super().__init__(style=discord.ButtonStyle.secondary, label="❓", row=level % 5)  # ✅ fixed row overflow
+        super().__init__(style=discord.ButtonStyle.secondary, label="❓", row=level)
         self.level = level
         self.choice = choice
         self.disabled = (level != 0)
@@ -1087,6 +1109,7 @@ class TowerButton(Button):
         if is_safe:
             self.style = discord.ButtonStyle.success
             self.label = "💎"
+            # Disable all buttons on this level
             for child in view.children:
                 if isinstance(child, TowerButton) and child.level == self.level:
                     child.disabled = True
@@ -1105,6 +1128,7 @@ class TowerButton(Button):
                 del tower_games[interaction.user.id]
                 return
 
+            # Enable next level buttons
             for child in view.children:
                 if isinstance(child, TowerButton) and child.level == game.current_level:
                     child.disabled = False
@@ -1112,13 +1136,19 @@ class TowerButton(Button):
             multiplier = game.get_current_multiplier()
             potential_win = int(game.bet_amount * multiplier)
 
-            embed = discord.Embed(title="🗼 Tower Climb", description=f"You climbed to **Level {game.current_level + 1}**!", color=discord.Color.green())
+            embed = discord.Embed(
+                title="🗼 Tower Climb",
+                description=f"You climbed to **Level {game.current_level}**!",
+                color=discord.Color.green()
+            )
             embed.add_field(name="Bet Amount", value=f"${game.bet_amount:,}", inline=True)
             embed.add_field(name="Multiplier", value=f"**{multiplier:.2f}x**", inline=True)
             embed.add_field(name="Potential Win", value=f"**${potential_win:,}**", inline=True)
             embed.set_footer(text="Pick a tile on the next level or cash out!")
             await interaction.response.edit_message(embed=embed, view=view)
+
         else:
+            # Player hit a skull
             for child in view.children:
                 if isinstance(child, TowerButton) and child.level == self.level:
                     child.disabled = True
@@ -1131,7 +1161,11 @@ class TowerButton(Button):
             for child in view.children:
                 child.disabled = True
             update_balance(interaction.user.id, -game.bet_amount)
-            embed = discord.Embed(title="💀 BOOM! You hit a skull!", description=f"You lost your bet of **${game.bet_amount:,}**.", color=discord.Color.red())
+            embed = discord.Embed(
+                title="💀 BOOM! You hit a skull!",
+                description=f"You lost your bet of **${game.bet_amount:,}**.",
+                color=discord.Color.red()
+            )
             await interaction.response.edit_message(embed=embed, view=view)
             del tower_games[interaction.user.id]
 
@@ -1145,7 +1179,7 @@ class TowerCashOutButton(Button):
             await interaction.response.send_message("No active tower game! Use `/tower` to start.", ephemeral=True)
             return
         if game.current_level == 0:
-            await interaction.response.send_message("You need to pick at least one tile before cashing out!", ephemeral=True)
+            await interaction.response.send_message("Pick at least one tile before cashing out!", ephemeral=True)
             return
         winnings = game.cash_out()
         profit = winnings - game.bet_amount
@@ -1171,23 +1205,21 @@ class TowerView(View):
                 self.add_item(TowerButton(level, choice))
         self.add_item(TowerCashOutButton())
 
+# Tower command
 @tree.command(name="tower", description="Play Tower — pick safe tiles and climb to the top!")
 @app_commands.describe(bet="Amount to bet (minimum 100)")
 async def tower(interaction: discord.Interaction, bet: int = 100):
-        await interaction.response.defer(thinking=True)
-
-
-
+    await interaction.response.defer(thinking=True)
     try:
         if bet < 100:
-            await interaction.edit_original_response(("❌ Minimum bet is $100!", ephemeral=True)
+            await interaction.edit_original_response(content="❌ Minimum bet is $100!", ephemeral=True)
             return
         if bet > 1000000:
-            await interaction.edit_original_response(("❌ Maximum bet is $1,000,000!", ephemeral=True)
+            await interaction.edit_original_response(content="❌ Maximum bet is $1,000,000!", ephemeral=True)
             return
         if not can_afford(interaction.user.id, bet):
             balance = get_balance(interaction.user.id)
-            await interaction.edit_original_response((f"❌ You can't afford that bet! Your balance: ${balance:,}", ephemeral=True)
+            await interaction.edit_original_response(content=f"❌ You can't afford that bet! Your balance: ${balance:,}", ephemeral=True)
             return
 
         update_balance(interaction.user.id, -bet)
@@ -1203,11 +1235,12 @@ async def tower(interaction: discord.Interaction, bet: int = 100):
         embed.add_field(name="Current Multiplier", value="**1.00x**", inline=True)
         embed.add_field(name="Potential Top Win", value=f"**${int(bet * TOWER_MULTIPLIERS[-1]):,}**", inline=True)
         embed.set_footer(text="Pick one tile per level. Cash out anytime to keep your winnings.")
-       await interaction.edit_original_response((embed=embed, view=view)
+
+        await interaction.edit_original_response(embed=embed, view=view)
+
     except Exception as e:
         print(f"[TOWER ERROR] {type(e).__name__}: {e}")
-       await interaction.edit_original_response(("⚠️ An error occurred starting your Tower game. Check logs.", ephemeral=True)
-
+        await interaction.edit_original_response(content="⚠️ An error occurred starting your Tower game. Check logs.", ephemeral=True)
 
 
 # --- CASINO LEADERBOARD SYSTEM ---
