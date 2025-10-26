@@ -1174,6 +1174,43 @@ async def cleartower(interaction: discord.Interaction):
     else:
         await interaction.response.send_message("You don't have an active Tower game.", ephemeral=True)
 
+# --- LEADERBOARD COMMAND ---
+
+@tree.command(name="leaderboard", description="View the top players by total balance")
+async def leaderboard(interaction: discord.Interaction):
+    balances = load_balances()
+    if not balances:
+        await interaction.response.send_message("No player data yet!", ephemeral=True)
+        return
+
+    # Sort by balance descending
+    sorted_players = sorted(balances.items(), key=lambda x: x[1], reverse=True)[:10]
+
+    embed = discord.Embed(
+        title="🏆 Casino Leaderboard",
+        description="Top 10 richest players across all games",
+        color=discord.Color.gold(),
+        timestamp=datetime.now(timezone.utc)
+    )
+
+    leaderboard_text = ""
+    rank_emojis = ["🥇", "🥈", "🥉"] + ["🏅"] * 7
+
+    for i, (user_id, balance) in enumerate(sorted_players):
+        user = await client.fetch_user(int(user_id))
+        net_gain = balance - STARTING_BALANCE
+        emoji = rank_emojis[i] if i < len(rank_emojis) else "🏅"
+        sign = "+" if net_gain >= 0 else ""
+        leaderboard_text += f"{emoji} **{user.name}** — 💰 ${balance:,}  (`{sign}{net_gain:,}`)\n"
+
+    embed.description = leaderboard_text or "No data yet!"
+    embed.set_footer(text=f"Requested by {interaction.user}", icon_url=interaction.user.display_avatar.url)
+
+    # Add top player's avatar as thumbnail
+    top_user = await client.fetch_user(int(sorted_players[0][0]))
+    embed.set_thumbnail(url=top_user.display_avatar.url)
+
+    await interaction.response.send_message(embed=embed)
 
 # --- Run the bot ---
 TOKEN = os.getenv("DISCORD_TOKEN")
