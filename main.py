@@ -980,25 +980,28 @@ async def clearmines(interaction: discord.Interaction):
 from discord import app_commands
 from discord.ui import Button, View
 import random
+import discord
+from discord import app_commands
+from discord.ui import Button, View
+import random
 
-# Tower multipliers
+# ------------------------
+# Tower multipliers & game tracking
+# ------------------------
 TOWER_MULTIPLIERS = [1.2, 1.5, 2.0, 3.0, 5.0, 10.0]
-
-# Active games
 tower_games = {}
 
 # ------------------------
-# Dummy balance functions
-# Replace with your real bot economy logic
+# Dummy balance functions (replace with your own)
 # ------------------------
 def can_afford(user_id, amount):
-    return True
+    return True  # Replace with your own balance check
 
 def get_balance(user_id):
-    return 10000
+    return 10000  # Replace with your balance system
 
 def update_balance(user_id, amount):
-    pass
+    pass  # Replace with your balance update logic
 
 # ------------------------
 # Tower game logic
@@ -1012,7 +1015,10 @@ class TowerGame:
         self.current_level = 0
         self.game_over = False
         self.won = False
-        self.skull_positions = {level: random.randint(0, self.tiles_per_level - 1) for level in range(self.levels)}
+        self.skull_positions = {
+            level: random.randint(0, self.tiles_per_level - 1)
+            for level in range(self.levels)
+        }
 
     def select_tile(self, choice):
         if self.game_over:
@@ -1121,7 +1127,6 @@ class TowerButton(Button):
                     else:
                         child.style = discord.ButtonStyle.success
                         child.label = "💎"
-            # Disable all buttons
             for child in view.children:
                 child.disabled = True
             update_balance(interaction.user.id, -game.bet_amount)
@@ -1148,7 +1153,6 @@ class TowerCashOutButton(Button):
         winnings = game.cash_out()
         profit = winnings - game.bet_amount
         update_balance(interaction.user.id, profit)
-        # Disable all buttons
         for item in self.view.children:
             item.disabled = True
         embed = discord.Embed(
@@ -1173,40 +1177,8 @@ class TowerView(View):
 # ------------------------
 # Tower command
 # ------------------------
-@tree.command(name="tower", description="Play Tower — pick safe tiles and climb to the top!")
-@app_commands.describe(bet="Amount to bet (minimum 100)")
-async def tower(interaction: discord.Interaction, bet: int = 100):
-    # Validation errors → ephemeral
-    if bet < 100:
-        await interaction.response.send_message("❌ Minimum bet is $100!", ephemeral=True)
-        return
-    if bet > 1000000:
-        await interaction.response.send_message("❌ Maximum bet is $1,000,000!", ephemeral=True)
-        return
-    if not can_afford(interaction.user.id, bet):
-        balance = get_balance(interaction.user.id)
-        await interaction.response.send_message(
-            f"❌ You can't afford that bet! Your balance: ${balance:,}", ephemeral=True
-        )
-        return
 
-    # Valid bet → defer response
-    await interaction.response.defer(thinking=True)
 
-    # Create game
-    game = TowerGame(interaction.user.id, bet)
-    tower_games[interaction.user.id] = game
-    view = TowerView(game)
-
-    # Send main game embed
-    embed = discord.Embed(
-        title="🗼 Tower — Pick a tile to climb!",
-        description=f"Bet: **${bet:,}** — Pick a tile on Level 1. Avoid the skull!",
-        color=discord.Color.blue()
-    )
-    embed.add_field(name="Current Multiplier", value="**1.00x**", inline=True)
-    embed.add_field(name="Potential Top Win", value=f"**${int(bet * TOWER_MULTIPLIERS[-1]):,}**", inline=True)
-    embed.set_footer(text="Pick one tile per level. Cash out anytime to keep your winnings.")
 
     await interaction.edit_original_response(embed=embed, view=view)
 
