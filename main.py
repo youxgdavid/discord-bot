@@ -1178,7 +1178,45 @@ class TowerView(View):
 # Tower command
 # ------------------------
 
+@tree.command(name="tower", description="Play Tower — pick safe tiles and climb to the top!")
+@app_commands.describe(bet="Amount to bet (minimum 100)")
+async def tower(interaction: discord.Interaction, bet: int = 100):
+    # Validation (ephemeral)
+    if bet < 100:
+        await interaction.response.send_message("❌ Minimum bet is $100!", ephemeral=True)
+        return
+    if bet > 1000000:
+        await interaction.response.send_message("❌ Maximum bet is $1,000,000!", ephemeral=True)
+        return
+    if not can_afford(interaction.user.id, bet):
+        balance = get_balance(interaction.user.id)
+        await interaction.response.send_message(
+            f"❌ You can't afford that bet! Your balance: ${balance:,}",
+            ephemeral=True
+        )
+        return
 
+    # Valid bet → defer and send main message
+    await interaction.response.defer(thinking=True)
+
+    game = TowerGame(interaction.user.id, bet)
+    tower_games[interaction.user.id] = game
+    view = TowerView(game)
+
+    embed = discord.Embed(
+        title="🗼 Tower — Pick a tile to climb!",
+        description=f"Bet: **${bet:,}** — Pick a tile on Level 1. Avoid the skull!",
+        color=discord.Color.blue()
+    )
+    embed.add_field(name="Current Multiplier", value="**1.00x**", inline=True)
+    embed.add_field(
+        name="Potential Top Win",
+        value=f"**${int(bet * TOWER_MULTIPLIERS[-1]):,}**",
+        inline=True
+    )
+    embed.set_footer(text="Pick one tile per level. Cash out anytime to keep your winnings.")
+
+    await interaction.edit_original_response(embed=embed, view=view)
 
     await interaction.edit_original_response(embed=embed, view=view)
 
