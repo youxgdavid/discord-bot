@@ -990,7 +990,190 @@ async def clearmines(interaction: discord.Interaction):
         await interaction.response.send_message("Done! Your mines game has been cleared!", ephemeral=True)
     else:
         await interaction.response.send_message("You do not have an active mines game.", ephemeral=True)
-  
+  # --- TOWER GAME (with visual progress bar) ---
+
+class TowerGame:
+    def __init__(self, user_id, bet):
+        self.user_id = user_id
+        self.bet = bet
+        self.level = 1
+        self.max_levels = 10
+        self.multiplier = 1.0
+        self.game_over = False
+        self.bomb_position = None
+
+    def next_level(self):
+        self.level += 1
+        self.multiplier += 0.5
+        self.bomb_position = random.randint(1, 3)
+
+    def reset_bomb(self):
+        self.bomb_position = random.randint(1, 3)
+
+    def is_bomb(self, choice):
+        return choice == self.bomb_position
+
+    def progress_bar(self):
+        """Return a nice visual progress bar showing current climb"""
+        bar = ""
+        for i in range(1, self.max_levels + 1):
+            if i < self.level:
+                bar += "⬛"
+            elif i == self.level:
+                bar += "🟩"
+            else:
+                bar += "⬜"
+        return bar
+
+
+tower_games = {}
+
+
+class TowerButton(Button):
+    def __init__(self, position):
+        super().__init__(label=f"Tile {position}", style=discord.ButtonStyle.secondary)
+        self.position = position
+
+    async def callback(self, interaction: discord.Interaction):
+        game = tower_games.get(interaction.user.id)
+        if not game or game.game_over:
+            await interaction.response.send_message("No active Tower game! Use `/tower` to start.", ephemeral=True)
+            return
+
+        if game.is_bomb(self.position):
+            game.game_over = True
+            update_balance(interaction.user.id, -game.bet)
+
+            for item in self.view.children:
+                if isinstance(item, TowerButton):
+                    item.disabled = True
+                    item.style = (
+                        discord.ButtonStyle.danger if item.position == game.bomb_position else discord.ButtonStyle.success
+                    )
+
+            embed = discord.Embed(
+                title="💣 BOOM! You hit a bomb!",
+                description=f"You lost **${game.bet:,}**",
+                color=discord.Color.red(),
+            )
+            embed.add_field(name="Progress", value=game.progress_bar(), inline=False)
+            await interaction.response.edit_message(embed=embed, view=self.view)
+            del tower_games[interaction.user.id]
+
+        else:
+            if game.level >= game.max_levels:
+                winnings = int(game.bet * game.multiplier)
+                profit = winnings - game.bet
+                update_balance(interaction.user.id, profit)
+                game.game_over = True
+
+                for item in self.view.children:
+                    item.disabled = True
+
+                embed = discord.Embed(
+                    title="🏆 You conquered the tower!",
+                    description=f"You reached the top and won **${winnings:,}** (Profit: **${profit:,}**)",
+                    color=discord.Color.gold(),
+                )
+                embed.add_field(name="Progress", value=game.progress_bar(), inline=False)
+                await interaction.response.edit_message(embed=embed, view=self.view)
+                del tower_games[interaction.user.id]
+                return
+
+            # Advance to next level
+            game.next_level()
+            embed = discord.Embed(
+                title="🧱 Tower Game",
+                description=f"Level: **{game.level} / {game.max_levels}**\nMultiplier: **{game.multiplier:.2f}x**\nBet: **${game.bet:,}**",
+                color=discord.Color.blue(),
+            )
+            embed.add_field(name="Progress", value=game.progress_bar(), inline=False)
+            embed.set_footer(text="Pick a tile! Cash out anytime to secure your winnings.")
+            view = TowerView(game)
+            await interaction.response.edit_message(embed=embed, view=view)
+
+
+class CashOutTowerButton(Button):
+    def __init__(self):
+        super().__init__(label="💰 Cash Out", style=discord.ButtonStyle.success)
+
+    async def callback(self, interaction: discord.Interaction):
+        game = tower_games.get(interaction.user.id)
+        if not game or game.game_over:
+            await interaction.response.send_message("No active Tower game!", ephemeral=True)
+            return
+
+        winnings = int(game.bet * game.multiplier)
+        profit = winnings - game.bet
+        update_balance(interaction.user.id, profit)
+        game.game_over = True
+
+        for item in self.view.children:
+            item.disabled = True
+
+        embed = discord.Embed(
+            title="💰 Cashed Out!",
+            description=f"You cashed out at Level **{game.level}** and won **${winnings:,}** (Profit: **${profit:,}**)",
+            color=discord.Color.gold(),
+        )
+        embed.add_field(name="Progress", value=game.progress_bar(), inline=False)
+        await interaction.response.edit_message(embed=embed, view=self.view)
+        del tower_games[interaction.user.id]
+
+
+class TowerView(View):
+    def __init__(self, game):
+        super().__init__(timeout=300)
+        self.game = game
+        self.game.reset_bomb()
+
+        for i in range(1, 4):
+            self.add_item(TowerButton(i))
+        self.add_item(CashOutTowerButton())
+
+    async def on_timeout(self):
+        if self.game.user_id in tower_games:
+            del tower_games[self.game.user_id]
+
+
+@tree.command(name="tower", description="Play a Tower casino game - climb levels and avoid bombs!")
+@app_commands.describe(bet="Amount to bet")
+async def tower(interaction: discord.Interaction, bet: int):
+    if bet < 100:
+        await interaction.response.send_message("❌ Minimum bet is $100!", ephemeral=True)
+        return
+    if not can_afford(interaction.user.id, bet):
+        bal = get_balance(interaction.user.id)
+        await interaction.response.send_message(f"❌ You don't have enough money! Your balance: ${bal:,}", ephemeral=True)
+        return
+    if interaction.user.id in tower_games:
+        await interaction.response.send_message("❌ You already have an active Tower game!", ephemeral=True)
+        return
+
+    game = TowerGame(interaction.user.id, bet)
+    tower_games[interaction.user.id] = game
+    game.reset_bomb()
+
+    embed = discord.Embed(
+        title="🧱 Tower Game",
+        description=f"Level: **1 / {game.max_levels}**\nMultiplier: **{game.multiplier:.2f}x**\nBet: **${bet:,}**",
+        color=discord.Color.blurple(),
+    )
+    embed.add_field(name="Progress", value=game.progress_bar(), inline=False)
+    embed.set_footer(text="Pick a tile! Avoid the bomb to climb higher!")
+
+    view = TowerView(game)
+    await interaction.response.send_message(embed=embed, view=view)
+
+
+@tree.command(name="cleartower", description="Clear your stuck tower game")
+async def cleartower(interaction: discord.Interaction):
+    if interaction.user.id in tower_games:
+        del tower_games[interaction.user.id]
+        await interaction.response.send_message("✅ Your Tower game has been cleared!", ephemeral=True)
+    else:
+        await interaction.response.send_message("You don't have an active Tower game.", ephemeral=True)
+
 
 # --- Run the bot ---
 TOKEN = os.getenv("DISCORD_TOKEN")
