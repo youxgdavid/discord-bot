@@ -73,6 +73,25 @@ def can_afford(user_id, amount):
     """Check if player can afford the amount"""
     return get_balance(user_id) >= amount
 
+# --- Bot ready event ---
+@client.event
+async def on_ready():
+    print(f"✅ Logged in as {client.user}")
+    
+    # Sync commands to a specific guild for instant updates, or globally if no guild ID is set
+    guild_id = os.getenv("GUILD_ID", "868504571637547018")  # Default to your server ID
+    if guild_id:
+        guild = discord.Object(id=int(guild_id))
+        tree.copy_global_to(guild=guild)
+        await tree.sync(guild=guild)
+        print(f"✅ Slash commands synced to guild {guild_id} instantly!")
+    else:
+        await tree.sync()
+        print("✅ Slash commands synced globally (may take up to 1 hour to appear)")
+    
+    print("Commands ready: /ping, /userinfo, /balance, /blackjack, /wordle, /mines, /clearmines")
+    print("🤖 Bot is now running 24/7 on Render!")
+
 # --- /ping command ---
 @tree.command(name="ping", description="Check if the bot is working")
 async def ping(interaction: discord.Interaction):
@@ -490,15 +509,12 @@ class BlackjackView(View):
         if dealer_total > 21:
             winnings = self.game.bet_amount * 2
             update_balance(self.user_id, winnings)
-            record_win(self.user_id, winnings)
             message = f"🎉 **Dealer busts! You win ${winnings:,}!**"
         elif player_total > dealer_total:
             winnings = self.game.bet_amount * 2
             update_balance(self.user_id, winnings)
-            record_win(self.user_id, winnings)
             message = f"🎉 **You win ${winnings:,}!**"
         elif player_total < dealer_total:
-            record_loss(self.user_id, self.game.bet_amount)
             message = f"😔 **Dealer wins! You lost ${self.game.bet_amount:,}**"
         else:
             # Tie - return bet
@@ -506,7 +522,6 @@ class BlackjackView(View):
             message = f"🤝 **It's a tie! Your bet of ${self.game.bet_amount:,} was returned**"
         
         await self.update_game(interaction, message)
-
 
 class WordleView(View):
     def __init__(self, game, user_id):
@@ -831,12 +846,12 @@ class MinesButton(Button):
                         item.label = "💣"
                         item.style = discord.ButtonStyle.danger
                     item.disabled = True
+            
             if is_safe:
                 # This shouldn't happen, but just in case
                 pass
             else:
                 # Hit a mine
-                record_loss(interaction.user.id, game.bet_amount)
                 update_balance(interaction.user.id, -game.bet_amount)
                 embed = discord.Embed(
                     title="💣 BOOM! You hit a mine!",
@@ -906,7 +921,6 @@ class CashOutButton(Button):
         
         winnings = game.cash_out()
         profit = winnings - game.bet_amount
-        record_win(interaction.user.id, profit)
         update_balance(interaction.user.id, profit)
         
         # Disable all buttons
@@ -976,313 +990,7 @@ async def clearmines(interaction: discord.Interaction):
         await interaction.response.send_message("Done! Your mines game has been cleared!", ephemeral=True)
     else:
         await interaction.response.send_message("You do not have an active mines game.", ephemeral=True)
-  import discord
-from discord import app_commands
-from discord.ui import Button, View
-import random
-import discord
-from discord import app_commands
-from discord.ui import Button, View
-import random
-
-# ------------------------
-# Tower multipliers & game tracking
-# ------------------------
-TOWER_MULTIPLIERS = [1.2, 1.5, 2.0, 3.0, 5.0, 10.0]
-tower_games = {}
-
-# ------------------------
-# Dummy balance functions (replace with your own)
-# ------------------------
-def can_afford(user_id, amount):
-    return True  # Replace with your own balance check
-
-def get_balance(user_id):
-    return 10000  # Replace with your balance system
-
-def update_balance(user_id, amount):
-    pass  # Replace with your balance update logic
-
-# ------------------------
-# Tower game logic
-# ------------------------
-class TowerGame:
-    def __init__(self, user_id, bet_amount):
-        self.user_id = user_id
-        self.bet_amount = bet_amount
-        self.levels = 6
-        self.tiles_per_level = 3
-        self.current_level = 0
-        self.game_over = False
-        self.won = False
-        self.skull_positions = {
-            level: random.randint(0, self.tiles_per_level - 1)
-            for level in range(self.levels)
-        }
-
-    def select_tile(self, choice):
-        if self.game_over:
-            return None
-        is_skull = self.skull_positions[self.current_level] == choice
-        if is_skull:
-            self.game_over = True
-            self.won = False
-            return False
-        else:
-            self.current_level += 1
-            if self.current_level >= self.levels:
-                self.game_over = True
-                self.won = True
-            return True
-
-    def get_current_multiplier(self):
-        if self.game_over and not self.won:
-            return 0.0
-        if self.current_level == 0:
-            return 1.0
-        return TOWER_MULTIPLIERS[self.current_level - 1]
-
-    def cash_out(self):
-        if self.game_over or self.current_level == 0:
-            return 0
-        self.game_over = True
-        self.won = True
-        return int(self.bet_amount * self.get_current_multiplier())
-
-# ------------------------
-# Tower buttons
-# ------------------------
-class TowerButton(Button):
-    def __init__(self, level, choice):
-        super().__init__(style=discord.ButtonStyle.secondary, label="❓", row=level)
-        self.level = level
-        self.choice = choice
-        self.disabled = (level != 0)
-
-    async def callback(self, interaction: discord.Interaction):
-        game = tower_games.get(interaction.user.id)
-        if not game:
-            await interaction.response.send_message("This isn't your game!", ephemeral=True)
-            return
-        if game.game_over:
-            await interaction.response.send_message("The game is already over.", ephemeral=True)
-            return
-        if self.level != game.current_level:
-            await interaction.response.send_message("You must play the current level.", ephemeral=True)
-            return
-
-        is_safe = game.select_tile(self.choice)
-        view = self.view
-
-        if is_safe:
-            self.style = discord.ButtonStyle.success
-            self.label = "💎"
-            # Disable all buttons on this level
-            for child in view.children:
-                if isinstance(child, TowerButton) and child.level == self.level:
-                    child.disabled = True
-
-            # Check if player won
-            if game.game_over and game.won:
-                winnings = int(game.bet_amount * TOWER_MULTIPLIERS[-1])
-                profit = winnings - game.bet_amount
-                update_balance(interaction.user.id, profit)
-                embed = discord.Embed(
-                    title="🎉 TOWER COMPLETE! 🎉",
-                    description=f"You reached the top and won **${winnings:,}**!",
-                    color=discord.Color.gold()
-                )
-                embed.add_field(name="Final Multiplier", value=f"{TOWER_MULTIPLIERS[-1]:.2f}x", inline=True)
-                await interaction.response.edit_message(embed=embed, view=view)
-                del tower_games[interaction.user.id]
-                return
-
-            # Enable next level buttons
-            for child in view.children:
-                if isinstance(child, TowerButton) and child.level == game.current_level:
-                    child.disabled = False
-
-            multiplier = game.get_current_multiplier()
-            potential_win = int(game.bet_amount * multiplier)
-
-            embed = discord.Embed(
-                title="🗼 Tower Climb",
-                description=f"You climbed to **Level {game.current_level}**!",
-                color=discord.Color.green()
-            )
-            embed.add_field(name="Bet Amount", value=f"${game.bet_amount:,}", inline=True)
-            embed.add_field(name="Multiplier", value=f"**{multiplier:.2f}x**", inline=True)
-            embed.add_field(name="Potential Win", value=f"**${potential_win:,}**", inline=True)
-            embed.set_footer(text="Pick a tile on the next level or cash out!")
-            await interaction.response.edit_message(embed=embed, view=view)
-
-        else:
-            # Player hit a skull
-            for child in view.children:
-                if isinstance(child, TowerButton) and child.level == self.level:
-                    child.disabled = True
-                    if child.choice == game.skull_positions[self.level]:
-                        child.style = discord.ButtonStyle.danger
-                        child.label = "💀"
-                    else:
-                        child.style = discord.ButtonStyle.success
-                        child.label = "💎"
-            for child in view.children:
-                child.disabled = True
-            update_balance(interaction.user.id, -game.bet_amount)
-            embed = discord.Embed(
-                title="💀 BOOM! You hit a skull!",
-                description=f"You lost your bet of **${game.bet_amount:,}**.",
-                color=discord.Color.red()
-            )
-            await interaction.response.edit_message(embed=embed, view=view)
-            del tower_games[interaction.user.id]
-
-class TowerCashOutButton(Button):
-    def __init__(self):
-        super().__init__(style=discord.ButtonStyle.success, label="💰 Cash Out", row=4)
-
-    async def callback(self, interaction: discord.Interaction):
-        game = tower_games.get(interaction.user.id)
-        if not game:
-            await interaction.response.send_message("No active tower game! Use `/tower` to start.", ephemeral=True)
-            return
-        if game.current_level == 0:
-            await interaction.response.send_message("Pick at least one tile before cashing out!", ephemeral=True)
-            return
-        winnings = game.cash_out()
-        profit = winnings - game.bet_amount
-        update_balance(interaction.user.id, profit)
-        for item in self.view.children:
-            item.disabled = True
-        embed = discord.Embed(
-            title="💰 Cashed Out!",
-            description=f"You cashed out at **Level {game.current_level}** and won **${winnings:,}** (Profit: **${profit:,}**)",
-            color=discord.Color.gold()
-        )
-        embed.add_field(name="Final Multiplier", value=f"{game.get_current_multiplier():.2f}x", inline=True)
-        embed.add_field(name="Bet Amount", value=f"${game.bet_amount:,}", inline=True)
-        await interaction.response.edit_message(embed=embed, view=self.view)
-        del tower_games[interaction.user.id]
-
-class TowerView(View):
-    def __init__(self, game):
-        super().__init__(timeout=300)
-        self.game = game
-        for level in range(game.levels):
-            for choice in range(game.tiles_per_level):
-                self.add_item(TowerButton(level, choice))
-        self.add_item(TowerCashOutButton())
-
-# ------------------------
-# Tower command
-# ------------------------
-
-@tree.command(name="tower", description="Play Tower — pick safe tiles and climb to the top!")
-@app_commands.describe(bet="Amount to bet (minimum 100)")
-async def tower(interaction: discord.Interaction, bet: int = 100):
-    # Validation (ephemeral)
-    if bet < 100:
-        await interaction.response.send_message("❌ Minimum bet is $100!", ephemeral=True)
-        return
-    if bet > 1000000:
-        await interaction.response.send_message("❌ Maximum bet is $1,000,000!", ephemeral=True)
-        return
-    if not can_afford(interaction.user.id, bet):
-        balance = get_balance(interaction.user.id)
-        await interaction.response.send_message(
-            f"❌ You can't afford that bet! Your balance: ${balance:,}",
-            ephemeral=True
-        )
-        return
-
-    # Valid bet → defer and send main message
-    await interaction.response.defer(thinking=True)
-
-    game = TowerGame(interaction.user.id, bet)
-    tower_games[interaction.user.id] = game
-    view = TowerView(game)
-
-    embed = discord.Embed(
-        title="🗼 Tower — Pick a tile to climb!",
-        description=f"Bet: **${bet:,}** — Pick a tile on Level 1. Avoid the skull!",
-        color=discord.Color.blue()
-    )
-    embed.add_field(name="Current Multiplier", value="**1.00x**", inline=True)
-    embed.add_field(
-        name="Potential Top Win",
-        value=f"**${int(bet * TOWER_MULTIPLIERS[-1]):,}**",
-        inline=True
-    )
-    embed.set_footer(text="Pick one tile per level. Cash out anytime to keep your winnings.")
-
-    await interaction.edit_original_response(embed=embed, view=view)
-
-    await interaction.edit_original_response(embed=embed, view=view)
-
-
-@tree.command(name="leaderboard", description="View the global casino leaderboard!")
-async def leaderboard(interaction: discord.Interaction):
-    stats = load_stats()
-    if not stats:
-        await interaction.response.send_message("No leaderboard data yet!", ephemeral=False)
-        return
-
-    # Sort by wins and losses
-    top_wins = sorted(stats.items(), key=lambda x: x[1].get("wins", 0), reverse=True)[:10]
-    top_losses = sorted(stats.items(), key=lambda x: x[1].get("losses", 0), reverse=True)[:10]
-
-    embed = discord.Embed(
-        title="🏆 Global Casino Leaderboard",
-        color=discord.Color.gold(),
-        timestamp=datetime.now(timezone.utc),
-        description="Combined results from all casino games!"
-    )
-
-    # Winners
-    win_lines = []
-    for rank, (uid, data) in enumerate(top_wins, start=1):
-        user = await client.fetch_user(int(uid))
-        avatar = user.display_avatar.url
-        win_lines.append(f"{rank}. [{user.display_name}]({avatar}) — **${data['wins']:,}**")
-
-    # Losers
-    lose_lines = []
-    for rank, (uid, data) in enumerate(top_losses, start=1):
-        user = await client.fetch_user(int(uid))
-        avatar = user.display_avatar.url
-        lose_lines.append(f"{rank}. [{user.display_name}]({avatar}) — **${data['losses']:,}**")
-
-    embed.add_field(name="🥇 Top Winners", value="\n".join(win_lines) or "No winners yet.", inline=False)
-    embed.add_field(name="💀 Biggest Losers", value="\n".join(lose_lines) or "No losses yet.", inline=False)
-    embed.set_footer(text="Stats update automatically. Daily $1500 bonus for top 3 winners.")
-
-    await interaction.response.send_message(embed=embed, ephemeral=False)
-
-@client.event
-async def on_ready():
-    print(f"✅ Logged in as {client.user}")
-
-    # Start daily bonus loop
-    try:
-        client.loop.create_task(award_daily_bonus())
-    except Exception as e:
-        print(f"[Leaderboard Bonus Task Error] {e}")
-
-    # Sync commands (to your guild for instant updates)
-    import os
-    guild_id = os.getenv("GUILD_ID", "868504571637547018")
-    try:
-        if guild_id:
-            guild = discord.Object(id=int(guild_id))
-            tree.copy_global_to(guild=guild)
-            await tree.sync(guild=guild)
-            print(f"✅ Slash commands synced instantly to guild {868504571637547018}")
-        else:
-            await tree.sync()
-            print("🌍 Synced slash commands globally (may take up to 1 hour)")
-    except Exception as e:
-        print(f"⚠️ Command sync error: {e}")
+  
 
 # --- Run the bot ---
 TOKEN = os.getenv("DISCORD_TOKEN")
