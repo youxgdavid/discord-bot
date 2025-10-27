@@ -1222,10 +1222,9 @@ import os
 from uuid import uuid4
 
 OPENAI_IMAGE_ENDPOINTS = [
-    "https://api.openai.com/v1/images/generate",       # common variant
-    "https://api.openai.com/v1/images/generations",    # older/alternate variant
-    "https://api.openai.com/v1/images"                 # fallback
+    "https://api.openai.com/v1/images/generations"
 ]
+
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
