@@ -7,32 +7,91 @@ Currently in **development** ⚠️ — please bear with any bugs!
 
 ---
 
+# 🤖 Discord Casino & Game Bot
+
+Your all-in-one **Discord entertainment bot** — complete with casino-style games, Wordle, a global economy system, and now **AI image generation** using **Hugging Face Stable Diffusion** 🎨
+
+---
+
+## 🌐 Bot Status
+![Uptime Badge](https://img.shields.io/uptimerobot/ratio/7/m795748201-4d9d0bba1a7c91f88962d4a1?label=Uptime&logo=discord&color=brightgreen)
+![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)
+![Discord.py](https://img.shields.io/badge/Discord.py-2.3+-5865F2?logo=discord)
+![License](https://img.shields.io/badge/License-MIT-green)
+
+> 🕒 *Bot runs 24/7 on Render hosting with built-in Flask keep-alive.*
+
+---
+
 ## 🌟 Features
 
-### 🎲 Games
-| Game | Status |
-|------|--------|
-| Blackjack | ![Status](https://img.shields.io/badge/✔-Available-brightgreen) |
-| Wordle | ![Status](https://img.shields.io/badge/✔-Available-brightgreen) |
-| Mines (Minesweeper Betting) | ![Status](https://img.shields.io/badge/✔-Available-brightgreen) |
-| Tower Game | ![Status](https://img.shields.io/badge/✔-Available-brightgreen)|
-### ⚡ Utility & Game Commands
+### 🎲 Games & Casino
 
+| Game | Description | Status |
+|------|--------------|--------|
+| 🃏 **Blackjack** | Bet and play against the dealer | ![Status](https://img.shields.io/badge/✔-Available-brightgreen) |
+| 🧩 **Wordle** | Guess the 5-letter word in 5 tries | ![Status](https://img.shields.io/badge/✔-Available-brightgreen) |
+| 💣 **Mines** | Reveal tiles, avoid mines to increase multiplier | ![Status](https://img.shields.io/badge/✔-Available-brightgreen) |
+| 🧱 **Tower Game** | Climb levels, avoid bombs, and cash out | ![Status](https://img.shields.io/badge/✔-Available-brightgreen) |
+
+---
+
+### ⚙️ Utility & Fun Commands
 
 | Command | Description |
 |---------|-------------|
 | `/ping` | Check bot latency |
-| `/userinfo` | Display user information |
-| `/balance` | Show your balance |
-| `/clearmines` | Clear your mines |
-| `/blackjack` | Play a game of Blackjack |
-| `/wordle` | Play Wordle |
-| `/mines` |Play Mines (Minesweeper Betting) |
-| `/Leaderboard` | Shows how much you've lost /won |
+| `/userinfo` | Display information about a user |
+| `/balance` | Show your current balance |
+| `/leaderboard` | View the richest players and total profits |
+| `/blackjack` | Play Blackjack and bet coins |
+| `/wordle` | Start a new Wordle game |
+| `/mines` | Play Mines (Minesweeper betting) |
+| `/clearmines` | Clear any stuck Mines game |
+| `/tower` | Play the Tower casino game |
+| `/cleartower` | Clear any stuck Tower game |
+| `/recreate` | Generate an AI image from text (powered by Hugging Face 🎨) |
 
-### 💰 Economy
-- Integrated balance system for games and bets.  
-- Earn and spend coins across different activities.  
+---
+
+### 💰 Economy System
+
+- 💵 **Integrated currency system** shared across all games  
+- 💎 Start with `$10,000` in your balance  
+- 📈 Win or lose depending on your game results  
+- 🏦 Persistent balances saved in `player_balances.json`  
+- 🏆 Global `/leaderboard` ranking shows the top players  
+
+---
+
+### 🧠 AI Image Generation
+
+| Feature | Description |
+|----------|--------------|
+| `/recreate scene:<text>` | Generate stunning images with text prompts using **Hugging Face Stable Diffusion XL** |
+| Example | `/recreate scene: draw my minecraft base as an ancient ruin` |
+| API | Uses the free Hugging Face inference API (`stabilityai/stable-diffusion-xl-base-1.0`) |
+| Env Variable | `HUGGINGFACE_TOKEN` required for authentication |
+
+---
+
+## 🛠️ Setup & Hosting
+
+### 1️⃣ Requirements
+- Python 3.11+
+- `discord.py`, `aiohttp`, `flask`, `openpyxl`, `python-dotenv`
+
+### 2️⃣ Environment Variables
+| Variable | Description |
+|-----------|--------------|
+| `DISCORD_TOKEN` | Your Discord bot token |
+| `HUGGINGFACE_TOKEN` | Your Hugging Face API token |
+| `PORT` | Required for Flask keep-alive on Render |
+
+### 3️⃣ Run
+```bash
+python main.py
+
 
 
 ## 💬 Connect with Me
@@ -47,6 +106,7 @@ Currently in **development** ⚠️ — please bear with any bugs!
 ```bash
 DISCORD_TOKEN=<your_bot_token>
 GUILD_ID=<your_guild_id>  # optional for faster command sync
+
 
 
 
