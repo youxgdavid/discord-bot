@@ -93,11 +93,6 @@ Your all-in-one **Discord entertainment bot** — complete with casino-style gam
 python main.py
 
 
-
-## 💬 Connect with Me
-
-[![Discord](https://img.shields.io/badge/Discord-Message%20Me-7289DA?logo=discord&logoColor=white)](https://discord.com/users/868504267927986197)
-
 ---
 
 ## 🛠 Setup
@@ -111,6 +106,10 @@ GUILD_ID=<your_guild_id>  # optional for faster command sync
 
 
 
+
+## 💬 Connect with Me
+
+[![Discord](https://img.shields.io/badge/Discord-Message%20Me-7289DA?logo=discord&logoColor=white)](https://discord.com/users/868504267927986197)
 
 
 
