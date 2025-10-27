@@ -1211,158 +1211,62 @@ async def leaderboard(interaction: discord.Interaction):
     embed.set_thumbnail(url=top_user.display_avatar.url)
 
     await interaction.response.send_message(embed=embed)
-# --- /recreate command: text -> image generation ---
-# Requires: set OPENAI_API_KEY in your environment
-# Notes: This example uses OpenAI's image generation API format. Some providers return a direct URL in ["data"][0]["url"]
-# while others return base64 in ["data"][0]["b64_json"]. The code handles both cases.
-
+# --- /recreate command using Hugging Face Stable Diffusion ---
 import base64
 import aiohttp
 import os
-from uuid import uuid4
 
-OPENAI_IMAGE_ENDPOINTS = [
-    "https://api.openai.com/v1/images/generations"
-]
+HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
+HF_MODEL = "stabilityai/stable-diffusion-xl-base-1.0"  # change if you prefer another
 
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
-def _needs_user_image(prompt: str) -> bool:
-    """Basic heuristic to check if prompt is asking to use the user's photo.
-       If so, we'll ask them to upload an image instead of generating from text alone."""
-    prompt_l = prompt.lower()
-    # common phrases that imply: "use my photo" / "draw me" / "my selfie"
-    keywords = ["draw me", "draw my", "my selfie", "use my photo", "from my photo", "edit my", "turn my"]
-    return any(k in prompt_l for k in keywords)
-
-@tree.command(name="recreate", description="Generate an image from text (e.g. 'Draw my Minecraft base as an ancient ruin')")
-@app_commands.describe(scene="Short prompt describing the scene to generate")
+@tree.command(name="recreate", description="Generate an image from text using Hugging Face (Stable Diffusion XL)")
+@app_commands.describe(scene="Describe what you want to generate, e.g. 'Draw my Minecraft base as an ancient ruin'")
 async def recreate(interaction: discord.Interaction, scene: str):
     if not scene or len(scene.strip()) < 3:
-        await interaction.response.send_message("❌ Provide a short description of the scene to generate (e.g. `Draw my Minecraft base as an ancient ruin`).", ephemeral=True)
+        await interaction.response.send_message("❌ Please provide a short scene description.", ephemeral=True)
+        return
+    if not HUGGINGFACE_TOKEN:
+        await interaction.response.send_message("❌ Missing HUGGINGFACE_TOKEN environment variable.", ephemeral=True)
         return
 
-    # If prompt seems to ask to use the user's photo, ask them to upload one (follow-up edit workflow)
-    if _needs_user_image(scene):
-        await interaction.response.send_message(
-            "It looks like you're asking to generate or edit an image of yourself. For accurate/ethical results, please upload a photo and then use an 'edit' command. (This command currently generates images from text only.)",
-            ephemeral=True
-        )
-        return
-
-    if not OPENAI_API_KEY:
-        await interaction.response.send_message("❌ Server not configured: missing OPENAI_API_KEY environment variable.", ephemeral=True)
-        return
-
-    # Defer the response because image generation can take a while
     await interaction.response.defer(thinking=True)
 
-    # Build prompt with optional helper text (you can extend this)
-    prompt = scene.strip()
+    # Build HF Inference endpoint
+    endpoint = f"https://api-inference.huggingface.co/models/{HF_MODEL}"
+    headers = {"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"}
+    payload = {"inputs": scene}
 
-    # request params: customize size / model as you like
-    payload = {
-        "model": "gpt-image-1",      # recommended name; change if your provider uses a different model id
-        "prompt": prompt,
-        "n": 1,
-        "size": "1024x1024"
-    }
-
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    json_resp = None
-    error_msg = None
-
-    # Try multiple common endpoints in order (some deployments / accounts use slightly different paths)
-    async with aiohttp.ClientSession() as session:
-        for endpoint in OPENAI_IMAGE_ENDPOINTS:
-            try:
-                async with session.post(endpoint, json=payload, headers=headers, timeout=120) as resp:
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(endpoint, headers=headers, json=payload, timeout=180) as resp:
+                if resp.status != 200:
                     text = await resp.text()
-                    if resp.status == 200:
-                        try:
-                            json_resp = await resp.json()
-                        except Exception:
-                            # sometimes the API returns non-JSON or base64 directly; keep the raw text in that case
-                            json_resp = {"raw_text": text}
-                        break
-                    else:
-                        # keep the last error message for debugging
-                        error_msg = f"HTTP {resp.status}: {text}"
-            except Exception as e:
-                error_msg = str(e)
-                # try next endpoint
+                    await interaction.followup.send(f"❌ Generation failed (HTTP {resp.status}):\n```{text}```", ephemeral=True)
+                    return
 
-    if not json_resp:
-        await interaction.followup.send(f"❌ Failed to generate image. Last error: {error_msg}", ephemeral=True)
+                img_bytes = await resp.read()
+    except Exception as e:
+        await interaction.followup.send(f"❌ Request error: {e}", ephemeral=True)
         return
 
-    # The response format can vary. Commonly:
-    # - { "data": [ { "url": "https://..." } ] }
-    # - or { "data": [ { "b64_json": "<base64 PNG>" } ] }
-    image_url = None
-    b64_data = None
+    # Save image and send
+    file_path = f"/tmp/recreate.png"
+    with open(file_path, "wb") as f:
+        f.write(img_bytes)
+    file = discord.File(file_path, filename="recreate.png")
+
+    embed = discord.Embed(
+        title="🖼️ Recreated Image",
+        description=f"**Prompt:** {scene}",
+        color=discord.Color.blurple()
+    )
+    embed.set_image(url="attachment://recreate.png")
+    await interaction.followup.send(embed=embed, file=file)
+
     try:
-        if isinstance(json_resp, dict) and "data" in json_resp and isinstance(json_resp["data"], list) and json_resp["data"]:
-            first = json_resp["data"][0]
-            image_url = first.get("url") or first.get("image") or first.get("src")
-            b64_data = first.get("b64_json") or first.get("b64")
-        else:
-            # fallback: if raw_text contains a URL, try to extract it
-            raw = json_resp.get("raw_text") if isinstance(json_resp, dict) else None
-            if raw:
-                # naive URL extraction
-                import re
-                m = re.search(r"https?://[^\s'\"]+", raw)
-                if m:
-                    image_url = m.group(0)
+        os.remove(file_path)
     except Exception:
         pass
-
-    filename = f"recreate_{uuid4().hex[:8]}.png"
-    file_path = f"/tmp/{filename}"
-
-    # If base64 returned -> decode and save
-    if b64_data:
-        try:
-            image_bytes = base64.b64decode(b64_data)
-            with open(file_path, "wb") as f:
-                f.write(image_bytes)
-            file_to_send = discord.File(file_path, filename=filename)
-            embed = discord.Embed(
-                title="🖼️ Recreated Image",
-                description=f"**Prompt:** {prompt}",
-                color=discord.Color.blurple()
-            )
-            embed.set_image(url=f"attachment://{filename}")
-            await interaction.followup.send(embed=embed, file=file_to_send)
-            # cleanup file
-            try:
-                os.remove(file_path)
-            except Exception:
-                pass
-            return
-        except Exception as e:
-            # fall through to try direct URL if available
-            print("Failed to decode base64 image:", e)
-
-    # If a direct image URL returned -> embed the URL and also attempt to attach it
-    if image_url:
-        embed = discord.Embed(
-            title="🖼️ Recreated Image",
-            description=f"**Prompt:** {prompt}\n\n[Open image]({image_url})",
-            color=discord.Color.blurple()
-        )
-        embed.set_image(url=image_url)
-        await interaction.followup.send(embed=embed)
-        return
-
-    # If nothing usable found in response, show raw response for debugging (ephemeral)
-    await interaction.followup.send(f"❌ Couldn't find image in API response. Raw response:\n```\n{json_resp}\n```", ephemeral=True)
 
 # --- Run the bot ---
 TOKEN = os.getenv("DISCORD_TOKEN")
