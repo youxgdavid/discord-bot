@@ -19,6 +19,10 @@ Your all-in-one **Discord entertainment bot** — complete with casino-style gam
 ![Discord.py](https://img.shields.io/badge/Discord.py-2.3+-5865F2?logo=discord)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
+## 💬 Connect with Me
+
+[![Discord](https://img.shields.io/badge/Discord-Message%20Me-7289DA?logo=discord&logoColor=white)](https://discord.com/users/868504267927986197)
+
 > 🕒 *Bot runs 24/7 on Render hosting with built-in Flask keep-alive.*
 
 ---
@@ -102,14 +106,6 @@ python main.py
 DISCORD_TOKEN=<your_bot_token>
 GUILD_ID=<your_guild_id>  # optional for faster command sync
 
-
-
-
-
-
-## 💬 Connect with Me
-
-[![Discord](https://img.shields.io/badge/Discord-Message%20Me-7289DA?logo=discord&logoColor=white)](https://discord.com/users/868504267927986197)
 
 
 
