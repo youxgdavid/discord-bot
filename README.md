@@ -13,8 +13,8 @@ Your all-in-one **Discord entertainment bot** — complete with casino-style gam
 
 ---
 
-## 🌐 
-![Uptime Badge]  ![Status](https://img.shields.io/badge/✔-Available-brightgreen) |
+## 🌐 Bot Status
+!Discord bot] ![Status](https://img.shields.io/badge/✔-Available-brightgreen) |
 ![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)
 ![Discord.py](https://img.shields.io/badge/Discord.py-2.3+-5865F2?logo=discord)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -105,6 +105,7 @@ python main.py
 ```bash
 DISCORD_TOKEN=<your_bot_token>
 GUILD_ID=<your_guild_id>  # optional for faster command sync
+
 
 
 
