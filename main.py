@@ -215,7 +215,7 @@ class WordleGame:
             "USAGE", "USUAL", "VALID", "VALUE", "VIDEO", "VIRUS", "VISIT", "VITAL", "VOCAL", "WASTE",
             "WATCH", "WATER", "WAVES", "WAYS", "WEIRD", "WELSH", "WHEEL", "WHERE", "WHICH", "WHILE",
             "WHITE", "WHOLE", "WHOSE", "WOMAN", "WOMEN", "WORLD", "WORRY", "WORSE", "WORST", "WORTH",
-            "WOULD", "WRITE", "WRONG", "WROTE", "YOUNG", "YOUTH" // This looks ugly asf, but it works so fuck it 
+            "WOULD", "WRITE", "WRONG", "WROTE", "YOUNG", "YOUTH" // This looks ugly but it works so fuck it 
         ]
         self.target_word = random.choice(self.word_list)
         self.guesses = []
