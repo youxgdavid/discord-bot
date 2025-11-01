@@ -2,8 +2,6 @@
  DISCORD BOT - FREE 24/7 HOSTING
 ========================================
 
-📁 Location: C:\Users\david\Downloads\discord_bot_deploy
-
 🎯 QUICK START (Easiest Method):
 
 1. Open DEPLOYMENT_INSTRUCTIONS.html (in your browser now!)
@@ -60,3 +58,4 @@
 🚀 Ready to deploy? Open the HTML file and follow along!
 
 ========================================
+
