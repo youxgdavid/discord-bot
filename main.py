@@ -1210,49 +1210,81 @@ async def leaderboard(interaction: discord.Interaction):
     top_user = await client.fetch_user(int(sorted_players[0][0]))
     embed.set_thumbnail(url=top_user.display_avatar.url)
 
-    await interaction.response.send_message(embed=embed)
-# --- /recreate command using Hugging Face Stable Diffusion ---
-import base64
 import aiohttp
+import discord
+from discord import app_commands
 import os
 
 HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
-HF_MODEL = "stabilityai/stable-diffusion-xl-base-1.0"  # change if you prefer another
+HF_MODEL = "stabilityai/stable-diffusion-xl-base-1.0"
 
-@tree.command(name="recreate", description="Generate an image from text using Hugging Face (Stable Diffusion XL)")
-@app_commands.describe(scene="Describe what you want to generate, e.g. 'Draw my Minecraft base as an ancient ruin'")
+@tree.command(
+    name="recreate",
+    description="Generate an image from text using Hugging Face (Stable Diffusion XL)"
+)
+@app_commands.describe(
+    scene="Describe what you want to generate, e.g. 'Draw my Minecraft base as an ancient ruin'"
+)
 async def recreate(interaction: discord.Interaction, scene: str):
     if not scene or len(scene.strip()) < 3:
-        await interaction.response.send_message("❌ Please provide a short scene description.", ephemeral=True)
+        await interaction.response.send_message(
+            "❌ Please provide a short scene description.",
+            ephemeral=True
+        )
         return
+
     if not HUGGINGFACE_TOKEN:
-        await interaction.response.send_message("❌ Missing HUGGINGFACE_TOKEN environment variable.", ephemeral=True)
+        await interaction.response.send_message(
+            "❌ Missing HUGGINGFACE_TOKEN environment variable.",
+            ephemeral=True
+        )
         return
 
     await interaction.response.defer(thinking=True)
 
-    # Build HF Inference endpoint
-    endpoint = const API_URL = "https://router.huggingface.co/hf-inference/models/gpt2";
-    headers = {"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"}
-    payload = {"inputs": scene}
+    # ✅ Correct Hugging Face endpoint (Python-safe)
+    endpoint = f"https://router.huggingface.co/hf-inference/models/{HF_MODEL}"
+
+    headers = {
+        "Authorization": f"Bearer {HUGGINGFACE_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "inputs": scene
+    }
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(endpoint, headers=headers, json=payload, timeout=180) as resp:
+            async with session.post(
+                endpoint,
+                headers=headers,
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=180)
+            ) as resp:
+
                 if resp.status != 200:
-                    text = await resp.text()
-                    await interaction.followup.send(f"❌ Generation failed (HTTP {resp.status}):\n```{text}```", ephemeral=True)
+                    error_text = await resp.text()
+                    await interaction.followup.send(
+                        f"❌ Generation failed (HTTP {resp.status}):\n```{error_text}```",
+                        ephemeral=True
+                    )
                     return
 
                 img_bytes = await resp.read()
+
     except Exception as e:
-        await interaction.followup.send(f"❌ Request error: {e}", ephemeral=True)
+        await interaction.followup.send(
+            f"❌ Request error: {e}",
+            ephemeral=True
+        )
         return
 
-    # Save image and send
-    file_path = f"/tmp/recreate.png"
+    # Save image temporarily
+    file_path = "/tmp/recreate.png"
     with open(file_path, "wb") as f:
         f.write(img_bytes)
+
     file = discord.File(file_path, filename="recreate.png")
 
     embed = discord.Embed(
@@ -1261,6 +1293,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
         color=discord.Color.blurple()
     )
     embed.set_image(url="attachment://recreate.png")
+
     await interaction.followup.send(embed=embed, file=file)
 
     try:
@@ -1268,12 +1301,6 @@ async def recreate(interaction: discord.Interaction, scene: str):
     except Exception:
         pass
 
-# --- Run the bot ---
-TOKEN = os.getenv("DISCORD_TOKEN")
-
-if not TOKEN:
-    raise ValueError("❌ No token found! Add DISCORD_TOKEN in Render environment variables.")
-print("Loaded token:", "✅ Found" if TOKEN else "❌ Missing")
 
 client.run(TOKEN)
 
