@@ -77,20 +77,22 @@ def can_afford(user_id, amount):
 @client.event
 async def on_ready():
     print(f"✅ Logged in as {client.user}")
+
+    # 🔍 DEBUG: see what commands actually registered
+    print("REGISTERED COMMANDS:", [cmd.name for cmd in tree.get_commands()])
     
-    # Sync commands to a specific guild for instant updates, or globally if no guild ID is set
-    guild_id = os.getenv("GUILD_ID", "868504571637547018")  # Default to your server ID
-    if guild_id:
-        guild = discord.Object(id=int(guild_id))
-        tree.copy_global_to(guild=guild)
-        await tree.sync(guild=guild)
-        print(f"✅ Slash commands synced to guild {guild_id} instantly!")
-    else:
-        await tree.sync()
-        print("✅ Slash commands synced globally (may take up to 1 hour to appear)")
-    
-    print("Commands ready: /ping, /userinfo, /balance, /blackjack, /wordle, /mines, /clearmines")
+    # Sync commands to a specific guild for instant updates
+    guild_id = os.getenv("GUILD_ID", "868504571637547018")
+    guild = discord.Object(id=int(guild_id))
+
+    # 🚨 Force Discord to refresh commands (IMPORTANT)
+    await tree.clear_commands(guild=guild)
+    tree.copy_global_to(guild=guild)
+    await tree.sync(guild=guild)
+
+    print(f"✅ Slash commands synced to guild {guild_id}!")
     print("🤖 Bot is now running 24/7 on Render!")
+
 
 # --- /ping command ---
 @tree.command(name="ping", description="Check if the bot is working")
