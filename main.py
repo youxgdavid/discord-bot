@@ -1384,8 +1384,6 @@ class HelpView(View):
 
 @tree.command(name="help", description="Show all commands or detailed help for one command")
 @app_commands.describe(command="Specific command to get help for")
-from typing import Optional
-
 async def help_command(interaction: discord.Interaction, command: Optional[str] = None):
 
     # ======================
