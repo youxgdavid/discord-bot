@@ -1300,157 +1300,177 @@ async def recreate(interaction: discord.Interaction, scene: str):
         os.remove(file_path)
     except Exception:
         pass
-# =======================
-# ADVANCED HELP SYSTEM
-# =======================
+# ===============================
+# ZERO-MAINTENANCE AUTO HELP SYSTEM
+# ===============================
+# Drop this file into your project and paste its contents
+# ANYWHERE above `client.run(TOKEN)`
 
-def get_command_categories():
-    return {
-        "Utility": ["ping", "userinfo", "balance", "leaderboard"],
-        "Casino Games": ["blackjack", "mines", "tower", "wordle"],
-        "Cleanup": ["clearmines", "cleartower"],
-        "Fun": ["recreate"]
-    }
+import discord
+from discord import app_commands
+from discord.ui import View, Select
+from typing import Optional
+
+# --------- Emoji Auto Mapper ---------
+EMOJI_MAP = {
+    "ping": "🏓",
+    "userinfo": "🪪",
+    "balance": "💰",
+    "leaderboard": "🏆",
+    "blackjack": "🎴",
+    "mines": "💣",
+    "tower": "🧱",
+    "wordle": "🎯",
+    "recreate": "🖼️",
+}
 
 
-def get_command_by_name(name: str):
-    for cmd in tree.get_commands():
-        if cmd.name == name:
-            return cmd
+def emoji_for(cmd_name: str) -> str:
+    return EMOJI_MAP.get(cmd_name, "⚙️")
+
+
+# --------- Auto Categorization ---------
+
+def categorize(cmd: app_commands.Command) -> str:
+    perms = cmd.default_permissions
+    if perms and perms.administrator:
+        return "Admin"
+    name = cmd.name.lower()
+    if name in {"blackjack", "mines", "tower", "wordle"}:
+        return "Casino Games"
+    if name in {"balance", "leaderboard"}:
+        return "Economy"
+    if name in {"ping", "userinfo", "help"}:
+        return "Utility"
+    return "Other"
+
+
+# --------- Command Resolver ---------
+
+def get_cmd(name: str):
+    for c in tree.get_commands():
+        if c.name == name:
+            return c
     return None
 
 
-class HelpSelect(Select):
-    def __init__(self):
+# --------- Dropdown ---------
+class HelpDropdown(Select):
+    def __init__(self, interaction: discord.Interaction):
         options = []
-        categories = get_command_categories()
-
-        for category, cmds in categories.items():
-            for cmd in cmds:
-                options.append(
-                    discord.SelectOption(
-                        label=f"/{cmd}",
-                        description=f"{category} command",
-                        value=cmd
-                    )
+        for cmd in tree.get_commands():
+            if cmd.default_permissions and cmd.default_permissions.administrator:
+                if not interaction.user.guild_permissions.administrator:
+                    continue
+            options.append(
+                discord.SelectOption(
+                    label=f"/{cmd.name}",
+                    value=cmd.name,
+                    description=cmd.description or "No description",
+                    emoji=emoji_for(cmd.name)
                 )
+            )
 
         super().__init__(
-            placeholder="📖 Select a command to view help",
+            placeholder="📖 Select a command",
+            options=options,
             min_values=1,
-            max_values=1,
-            options=options
+            max_values=1
         )
 
     async def callback(self, interaction: discord.Interaction):
-        cmd_name = self.values[0]
-        cmd = get_command_by_name(cmd_name)
-
+        cmd = get_cmd(self.values[0])
         if not cmd:
-            await interaction.response.send_message("Command not found.", ephemeral=True)
+            await interaction.response.send_message("Command not found", ephemeral=True)
             return
 
         embed = discord.Embed(
-            title=f"📘 Help — /{cmd.name}",
-            description=cmd.description or "No description available.",
+            title=f"{emoji_for(cmd.name)} /{cmd.name}",
+            description=cmd.description or "No description",
             color=discord.Color.blurple()
         )
 
         if cmd.parameters:
-            params = "\n".join(
-                f"• **{p.name}** — {p.description or 'No description'}"
-                for p in cmd.parameters
+            embed.add_field(
+                name="Parameters",
+                value="\n".join(
+                    f"• **{p.name}** — {p.description or 'No description'}"
+                    for p in cmd.parameters
+                ),
+                inline=False
             )
-            embed.add_field(name="Parameters", value=params, inline=False)
-        else:
-            embed.add_field(name="Parameters", value="None", inline=False)
-
-        embed.add_field(
-            name="Usage",
-            value=f"`/{cmd.name}`",
-            inline=False
-        )
-
-        embed.set_footer(text="Use /help to return to main menu")
-
-        await interaction.response.edit_message(embed=embed, view=HelpView())
-
-
-class HelpView(View):
-    def __init__(self):
-        super().__init__(timeout=300)
-        self.add_item(HelpSelect())
-
-
-@tree.command(name="help", description="Show all commands or detailed help for one command")
-@app_commands.describe(command="Specific command to get help for")
-async def help_command(interaction: discord.Interaction, command: Optional[str] = None):
-
-    # ======================
-    # HELP FOR ONE COMMAND
-    # ======================
-    if command:
-        cmd = get_command_by_name(command)
-
-        if not cmd:
-            await interaction.response.send_message(
-                f"❌ Command `{command}` not found.",
-                ephemeral=True
-            )
-            return
-
-        embed = discord.Embed(
-            title=f"📘 Help — /{cmd.name}",
-            description=cmd.description or "No description available.",
-            color=discord.Color.blurple()
-        )
-
-        if cmd.parameters:
-            params = "\n".join(
-                f"• **{p.name}** — {p.description or 'No description'}"
-                for p in cmd.parameters
-            )
-            embed.add_field(name="Parameters", value=params, inline=False)
         else:
             embed.add_field(name="Parameters", value="None", inline=False)
 
         embed.add_field(name="Usage", value=f"`/{cmd.name}`", inline=False)
+        embed.set_footer(text="Automatic help system")
 
-        embed.set_footer(
-            text=f"Requested by {interaction.user}",
-            icon_url=interaction.user.display_avatar.url
+        await interaction.response.edit_message(embed=embed, view=HelpView(interaction))
+
+
+class HelpView(View):
+    def __init__(self, interaction: discord.Interaction):
+        super().__init__(timeout=300)
+        self.add_item(HelpDropdown(interaction))
+
+
+# --------- HELP COMMAND ---------
+@tree.command(name="help", description="Automatic help menu")
+@app_commands.describe(command="Optional command name")
+async def help_command(interaction: discord.Interaction, command: Optional[str] = None):
+
+    if command:
+        cmd = get_cmd(command)
+        if not cmd:
+            await interaction.response.send_message("Command not found", ephemeral=True)
+            return
+
+        embed = discord.Embed(
+            title=f"{emoji_for(cmd.name)} /{cmd.name}",
+            description=cmd.description or "No description",
+            color=discord.Color.blurple()
         )
 
+        if cmd.parameters:
+            embed.add_field(
+                name="Parameters",
+                value="\n".join(
+                    f"• **{p.name}** — {p.description or 'No description'}"
+                    for p in cmd.parameters
+                ),
+                inline=False
+            )
+        else:
+            embed.add_field(name="Parameters", value="None", inline=False)
+
+        embed.add_field(name="Usage", value=f"`/{cmd.name}`", inline=False)
         await interaction.response.send_message(embed=embed)
         return
 
-    # ======================
-    # MAIN HELP MENU
-    # ======================
+    categories = {}
+    for cmd in tree.get_commands():
+        if cmd.default_permissions and cmd.default_permissions.administrator:
+            if not interaction.user.guild_permissions.administrator:
+                continue
+        cat = categorize(cmd)
+        categories.setdefault(cat, []).append(cmd)
+
     embed = discord.Embed(
-        title="🛠️ Bot Help Menu",
-        description=(
-            "Welcome! Below are all available commands.\n\n"
-            "📖 Use the **dropdown menu** to view detailed help.\n"
-            "⌨️ Or use `/help <command>`"
-        ),
+        title="🛠️ Help Menu",
+        description="Fully automatic command help.\nSelect a command below.",
         color=discord.Color.blurple()
     )
 
-    categories = get_command_categories()
-    for category, cmds in categories.items():
+    for cat, cmds in categories.items():
         embed.add_field(
-            name=f"📂 {category}",
-            value="\n".join(f"`/{c}`" for c in cmds),
+            name=f"📂 {cat}",
+            value="\n".join(f"{emoji_for(c.name)} `/{c.name}`" for c in cmds),
             inline=False
         )
 
-    embed.set_footer(
-        text=f"Requested by {interaction.user}",
-        icon_url=interaction.user.display_avatar.url
-    )
+    embed.set_footer(text=f"Requested by {interaction.user}")
 
-    await interaction.response.send_message(embed=embed, view=HelpView())
+    await interaction.response.send_message(embed=embed, view=HelpView(interaction))
 
 
 client.run(TOKEN)
