@@ -1474,5 +1474,9 @@ async def help_command(interaction: discord.Interaction, command: Optional[str] 
     await interaction.response.send_message(embed=embed, view=HelpView(interaction))
 
 
+import os
+
+TOKEN = os.environ.get('TOKEN')
 client.run(TOKEN)
+
 
