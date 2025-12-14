@@ -1232,7 +1232,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
     await interaction.response.defer(thinking=True)
 
     # Build HF Inference endpoint
-    endpoint = fhttps://router.huggingface.co/hf-inference/models/{HF_MODEL}"
+    endpoint = const API_URL = "https://router.huggingface.co/hf-inference/models/gpt2";
     headers = {"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"}
     payload = {"inputs": scene}
 
