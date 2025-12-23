@@ -78,7 +78,7 @@ def can_afford(user_id, amount):
 async def on_ready():
     print(f"✅ Logged in as {client.user}")
     
-    # Sync commands to a specific guild for instant updates, or globally if no guild ID is set
+    # Sync commands to a specific guild for instant updates, or globally if no guild ID is set, do not copy mine as it will not update automatically to your personal server. 
     guild_id = os.getenv("GUILD_ID", "868504571637547018")  # Default to your server ID
     if guild_id:
         guild = discord.Object(id=int(guild_id))
@@ -160,7 +160,7 @@ async def balance(interaction: discord.Interaction):
 # --- Wordle Game Logic ---
 class WordleGame:
     def __init__(self):
-        # Common 5-letter words for Wordle
+        # Common 5-letter words for Wordle (feel free to add any different words) 
         self.word_list = [
             "ABOUT", "ABOVE", "ABUSE", "ACTOR", "ACUTE", "ADMIT", "ADOPT", "ADULT", "AFTER", "AGAIN",
             "AGENT", "AGREE", "AHEAD", "ALARM", "ALBUM", "ALERT", "ALIEN", "ALIGN", "ALIKE", "ALIVE",
@@ -492,7 +492,7 @@ class BlackjackView(View):
         """Dealer plays according to standard rules (hit until 17+)"""
         player_total = self.game.calculate_hand(self.game.player_hand)
         
-        # If player already busted, dealer doesn't need to play
+        # If player already busted, dealer doesn't need to play and the game should end. 
         if player_total > 21:
             message = "💥 **Bust! You went over 21. Dealer wins!**"
             await self.update_game(interaction, message)
@@ -555,7 +555,7 @@ class WordleView(View):
         guesses_display = self.game.get_guesses_display()
         embed.add_field(name="Your Guesses", value=guesses_display, inline=False)
         
-        # Add letter hints
+        # Add letter hints (if guessing the correct letter correct)
         letter_hints = self.game.get_letter_hints()
         embed.add_field(name="💡 Letter Hints", value=letter_hints, inline=False)
         
@@ -664,7 +664,7 @@ async def blackjack(interaction: discord.Interaction, bet: int = 100):
         await interaction.response.send_message("❌ Maximum bet is $10,000!", ephemeral=True)
         return
     
-    # Check if player can afford the bet
+    # Check if player can afford / place the bet
     if not can_afford(interaction.user.id, bet):
         balance = get_balance(interaction.user.id)
         await interaction.response.send_message(f"❌ You can't afford that bet! Your balance: ${balance:,}", ephemeral=True)
@@ -1242,7 +1242,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
 
     await interaction.response.defer(thinking=True)
 
-    # ✅ Correct Hugging Face endpoint (Python-safe)
+    # Correct Hugging Face endpoint
     endpoint = f"https://router.huggingface.co/hf-inference/models/{HF_MODEL}"
 
     headers = {
