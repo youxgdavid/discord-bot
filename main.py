@@ -1301,6 +1301,11 @@ async def recreate(interaction: discord.Interaction, scene: str):
     except Exception:
         pass
 
+TOKEN = os.getenv("DISCORD_TOKEN")
+
+if not TOKEN:
+    raise RuntimeError("DISCORD_TOKEN environment variable not set!")
 
 client.run(TOKEN)
+
 
