@@ -1326,6 +1326,7 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 if not TOKEN:
     raise RuntimeError("DISCORD_TOKEN environment variable not set!")
 
-client.run(TOKEN)
+client.run(TOKEN.strip())
+
 
 
