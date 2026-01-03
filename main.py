@@ -80,14 +80,12 @@ async def on_ready():
     GUILD_ID = int(os.getenv("GUILD_ID", "868504571637547018"))
     guild = discord.Object(id=GUILD_ID)
 
-    # 🚀 Clear old guild commands to prevent ghost / stuck commands
-    tree.clear_commands(guild=guild)
+    # 🚀 Sync commands instantly & remove outdated ones from Discord
+    await tree.sync(guild=guild, delete_unknown=True)
 
-    # 🚀 Sync fresh commands instantly
-    await tree.sync(guild=guild)
+    print(f"⚡ Slash commands fully synced to guild {GUILD_ID}")
+    print("🤖 Bot is fully ready — all commands available")
 
-    print(f"⚡ Slash commands FORCE-synced to guild {GUILD_ID}")
-    print("🤖 Bot is fully ready — commands update instantly")
 
 @client.event
 async def on_member_join(member: discord.Member):
@@ -1320,6 +1318,28 @@ async def recreate(interaction: discord.Interaction, scene: str):
         color=discord.Color.blurple()
     )
     embed.set_image(url="attachment://recreate.png")
+
+@tree.command(name="resync", description="Force re-sync slash commands (Admin only)")
+@app_commands.guild_only()
+async def resync(interaction: discord.Interaction):
+    # 🔒 Permission check (Administrator)
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message(
+            "❌ You don't have permission to use this command.",
+            ephemeral=True
+        )
+        return
+
+    await interaction.response.defer(thinking=True, ephemeral=True)
+
+    guild = interaction.guild
+    await tree.sync(guild=guild, delete_unknown=True)
+
+    await interaction.followup.send(
+        "✅ Slash commands have been **fully re-synced**.\n"
+        "If you don't see updates yet, restart Discord (Ctrl+R).",
+        ephemeral=True
+    )
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
