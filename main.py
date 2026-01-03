@@ -1294,6 +1294,33 @@ async def recreate(interaction: discord.Interaction, scene: str):
     )
     embed.set_image(url="attachment://recreate.png")
 
+    @client.event
+async def on_member_join(member: discord.Member):
+    try:
+        embed = discord.Embed(
+            title="👋 Welcome to the Server!",
+            description=(
+                f"Hey **{member.name}**!\n\n"
+                "We're glad to have you here 💙\n\n"
+                "✨ **What you can do:**\n"
+                "• Play casino games 🎰\n"
+                "• Check your balance with `/balance`\n"
+                "• Compete on the `/leaderboard`\n"
+                "• Try games like Blackjack, Mines, Tower & Wordle\n\n"
+                "📌 **Tip:** Start with `/balance` to see your starting money!"
+            ),
+            color=discord.Color.blurple()
+        )
+
+        embed.set_thumbnail(url=member.display_avatar.url)
+        embed.set_footer(text="Enjoy your stay 🚀")
+
+        await member.send(embed=embed)
+
+    except discord.Forbidden:
+        # User has DMs closed
+        pass
+    
     await interaction.followup.send(embed=embed, file=file)
 
     try:
