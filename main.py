@@ -505,7 +505,7 @@ class BlackjackView(View):
             self.game.dealer_hand.append(self.game.deal_card())
             dealer_total = self.game.calculate_hand(self.game.dealer_hand)
         
-        # Determine winner and handle money
+        # Determine winner and handle money with automatically updated /balance and /leaderboard system.
         if dealer_total > 21:
             winnings = self.game.bet_amount * 2
             update_balance(self.user_id, winnings)
