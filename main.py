@@ -1320,8 +1320,7 @@ async def resync(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True, ephemeral=True)
 
     guild = interaction.guild
-   await tree.sync(guild=guild)
-
+ await tree.sync(guild=guild, delete_unknown=True)
 
     await interaction.followup.send(
         "✅ Slash commands have been **fully re-synced**.\n"
@@ -1339,8 +1338,6 @@ async def on_ready():
     await tree.sync(guild=guild)
 
     print(f"⚡ Slash commands fully synced to guild {GUILD_ID}")
-
-
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
