@@ -1331,15 +1331,11 @@ async def resync(interaction: discord.Interaction):
         "If you don't see updates yet, restart Discord (Ctrl+R).",
         ephemeral=True
     )
+
     
     @client.event
 async def on_ready():
     print(f"✅ Logged in as {client.user}")
-
-    print("🔍 REGISTERED COMMANDS:")
-    for cmd in tree.get_commands():
-        print(" -", cmd.name)
-    print("TOTAL:", len(tree.get_commands()))
 
     GUILD_ID = int(os.getenv("GUILD_ID", "868504571637547018"))
     guild = discord.Object(id=GUILD_ID)
