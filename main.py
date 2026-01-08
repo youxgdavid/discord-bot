@@ -73,19 +73,6 @@ def can_afford(user_id, amount):
     """Check if player can afford the amount"""
     return get_balance(user_id) >= amount
 
-@client.event
-async def on_ready():
-    print(f"✅ Logged in as {client.user}")
-
-    GUILD_ID = int(os.getenv("GUILD_ID", "868504571637547018"))
-    guild = discord.Object(id=GUILD_ID)
-
-    # 🚀 Sync commands instantly & remove outdated ones from Discord
-    await tree.sync(guild=guild, delete_unknown=True)
-
-    print(f"⚡ Slash commands fully synced to guild {GUILD_ID}")
-    print("🤖 Bot is fully ready — all commands available")
-
 
 @client.event
 async def on_member_join(member: discord.Member):
@@ -1340,6 +1327,20 @@ async def resync(interaction: discord.Interaction):
         "If you don't see updates yet, restart Discord (Ctrl+R).",
         ephemeral=True
     )
+    
+@client.event
+async def on_ready():
+    print(f"✅ Logged in as {client.user}")
+
+    GUILD_ID = int(os.getenv("GUILD_ID", "868504571637547018"))
+    guild = discord.Object(id=GUILD_ID)
+
+   await tree.sync(guild=guild)
+
+
+    print("⚡ Slash commands synced")
+
+
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
