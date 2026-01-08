@@ -32,8 +32,10 @@ keep_alive()
 intents = discord.Intents.default()
 intents.members = True  # Required for member info like roles/join date
 
-client = discord.Client(intents=intents)
-tree = app_commands.CommandTree(client)
+from discord.ext import commands
+
+client = commands.Bot(command_prefix="!", intents=intents)
+tree = client.tree
 
 # --- Currency System ---
 CURRENCY_FILE = "player_balances.json"
@@ -1329,12 +1331,18 @@ async def resync(interaction: discord.Interaction):
 async def on_ready():
     print(f"✅ Logged in as {client.user}")
 
+    print("🔍 REGISTERED COMMANDS:")
+    for cmd in tree.get_commands():
+        print(f" - {cmd.name}")
+
+    print(f"TOTAL COMMANDS: {len(tree.get_commands())}")
+
     GUILD_ID = int(os.getenv("GUILD_ID", "868504571637547018"))
     guild = discord.Object(id=GUILD_ID)
 
     await tree.sync(guild=guild)
 
-    print(f"⚡ Slash commands fully synced to guild {GUILD_ID}")
+    print("⚡ Slash commands synced")
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
