@@ -1319,7 +1319,6 @@ async def resync(interaction: discord.Interaction):
 
     await interaction.response.defer(thinking=True, ephemeral=True)
     guild = interaction.guild
- await tree.sync(guild=guild, delete_unknown=True)
     await interaction.followup.send(
         "✅ Slash commands have been **fully re-synced**.\n"
         "If you don't see updates yet, restart Discord (Ctrl+R).",
