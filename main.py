@@ -1332,11 +1332,9 @@ async def resync(interaction: discord.Interaction):
         ephemeral=True
     )
 
-    
-    @client.event
+@client.event
 async def on_ready():
     print(f"✅ Logged in as {client.user}")
-
     GUILD_ID = int(os.getenv("GUILD_ID", "868504571637547018"))
     guild = discord.Object(id=GUILD_ID)
 
