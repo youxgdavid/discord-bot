@@ -1306,19 +1306,18 @@ async def recreate(interaction: discord.Interaction, scene: str):
     )
     embed.set_image(url="attachment://recreate.png")
 
-@tree.command(name="resync", description="Force re-sync slash commands (Admin only)")
+@tree.command(name="resync", description="Force resync slash commands")
 @app_commands.guild_only()
 async def resync(interaction: discord.Interaction):
-    # 🔒 Permission check (Administrator)
-    if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message(
-            "❌ You don't have permission to use this command.",
-            ephemeral=True
-        )
-        return
-
     await interaction.response.defer(thinking=True, ephemeral=True)
 
+    await interaction.followup.send(
+        "✅ Slash commands have been re-synced.\n"
+        "If you don't see updates yet, restart Discord (Ctrl+R).",
+        ephemeral=True
+    )
+
+    await interaction.response.defer(thinking=True, ephemeral=True)
     guild = interaction.guild
  await tree.sync(guild=guild, delete_unknown=True)
     await interaction.followup.send(
