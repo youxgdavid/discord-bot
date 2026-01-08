@@ -1,5 +1,6 @@
 import discord
 from discord import app_commands
+from discord.ext import commands
 from discord.ui import Button, View
 from datetime import datetime, timezone
 from typing import Optional, cast
@@ -1311,7 +1312,11 @@ async def recreate(interaction: discord.Interaction, scene: str):
 @tree.command(name="resync", description="Force resync slash commands")
 @app_commands.guild_only()
 async def resync(interaction: discord.Interaction):
-    await interaction.response.defer(thinking=True, ephemeral=True)
+    await interaction.response.send_message(
+        "ℹ️ Commands sync automatically on bot restart.\n"
+        "If you don't see updates, restart Discord (Ctrl+R).",
+        ephemeral=True
+    )
 
     await interaction.followup.send(
         "✅ Slash commands have been re-synced.\n"
@@ -1327,22 +1332,21 @@ async def resync(interaction: discord.Interaction):
         ephemeral=True
     )
     
-@client.event
+    @client.event
 async def on_ready():
     print(f"✅ Logged in as {client.user}")
 
     print("🔍 REGISTERED COMMANDS:")
     for cmd in tree.get_commands():
-        print(f" - {cmd.name}")
-
-    print(f"TOTAL COMMANDS: {len(tree.get_commands())}")
+        print(" -", cmd.name)
+    print("TOTAL:", len(tree.get_commands()))
 
     GUILD_ID = int(os.getenv("GUILD_ID", "868504571637547018"))
     guild = discord.Object(id=GUILD_ID)
 
     await tree.sync(guild=guild)
 
-    print("⚡ Slash commands synced")
+    print("⚡ Slash commands fully synced")
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
