@@ -1548,6 +1548,96 @@ async def timeout_member(
         await interaction.response.send_message(f"❌ Timeout failed: {e}", ephemeral=True)
 
 
+@tree.command(name="untimeout", description="Remove timeout from a member", guild=GUILD_OBJECT)
+@app_commands.guild_only()
+@app_commands.describe(member="Member to remove timeout", reason="Reason for removing timeout")
+@app_commands.checks.has_permissions(moderate_members=True)
+async def untimeout_member(
+    interaction: discord.Interaction,
+    member: discord.Member,
+    reason: Optional[str] = None,
+):
+    # Role hierarchy checks
+    if interaction.guild and interaction.user != interaction.guild.owner and interaction.user.top_role <= member.top_role:
+        await interaction.response.send_message("❌ You cannot modify a member with an equal or higher role.", ephemeral=True)
+        return
+    me = interaction.guild.me if interaction.guild else None
+    if me and me.top_role <= member.top_role:
+        await interaction.response.send_message("❌ I cannot modify that member due to role hierarchy.", ephemeral=True)
+        return
+
+    # DM the user first
+    dm_embed = make_mod_embed(
+        title=f"Your timeout has been lifted in {interaction.guild.name}",
+        color=discord.Color.green(),
+        user=member,
+        moderator=interaction.user,
+        reason=reason,
+    )
+    try:
+        await member.send(embed=dm_embed)
+    except discord.Forbidden:
+        pass
+    except Exception:
+        pass
+
+    try:
+        # Clear the timeout
+        await member.timeout(None, reason=reason or f"Timeout cleared by {interaction.user}")
+        embed = make_mod_embed(
+            title="✅ Timeout Removed",
+            color=discord.Color.green(),
+            user=member,
+            moderator=interaction.user,
+            reason=reason,
+        )
+        await interaction.response.send_message(embed=embed)
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ I lack permission to remove the timeout for this member.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Failed to remove timeout: {e}", ephemeral=True)
+
+
+@tree.command(name="unban", description="Unban a user from the server", guild=GUILD_OBJECT)
+@app_commands.guild_only()
+@app_commands.describe(user="User to unban", reason="Reason for unban")
+@app_commands.checks.has_permissions(ban_members=True)
+async def unban_user(
+    interaction: discord.Interaction,
+    user: discord.User,
+    reason: Optional[str] = None,
+):
+    # Attempt to DM before unban (may fail if DMs closed or no mutual guilds)
+    dm_embed = make_mod_embed(
+        title=f"You have been unbanned from {interaction.guild.name}",
+        color=discord.Color.green(),
+        user=user,
+        moderator=interaction.user,
+        reason=reason,
+    )
+    try:
+        await user.send(embed=dm_embed)
+    except Exception:
+        pass
+
+    try:
+        await interaction.guild.unban(user, reason=reason or f"Unbanned by {interaction.user}")
+        embed = make_mod_embed(
+            title="✅ User Unbanned",
+            color=discord.Color.green(),
+            user=user,
+            moderator=interaction.user,
+            reason=reason,
+        )
+        await interaction.response.send_message(embed=embed)
+    except discord.NotFound:
+        await interaction.response.send_message("❌ That user is not currently banned.", ephemeral=True)
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ I lack permission to unban that user.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Unban failed: {e}", ephemeral=True)
+
+
 @client.event
 async def on_ready():
     try:
