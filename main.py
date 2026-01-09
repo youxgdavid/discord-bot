@@ -42,6 +42,13 @@ tree = client.tree
 GUILD_ID = int(os.getenv("GUILD_ID", "868504571637547018"))
 GUILD_OBJECT = discord.Object(id=GUILD_ID)
 
+# Command sync controls
+# Set SYNC_COMMANDS=false to prevent automatic sync on startup (useful when running multiple instances)
+SYNC_COMMANDS = os.getenv("SYNC_COMMANDS", "true").lower() == "true"
+# Set GLOBAL_COMMAND_CLEANUP=true for a single run to clear previously created GLOBAL commands
+# This helps remove duplicates if you used to register commands globally
+GLOBAL_COMMAND_CLEANUP = os.getenv("GLOBAL_COMMAND_CLEANUP", "false").lower() == "true"
+
 # --- Currency System ---
 CURRENCY_FILE = "player_balances.json"
 STARTING_BALANCE = 10000
@@ -897,7 +904,7 @@ class MinesButton(Button):
             )
             embed.add_field(
                 name="Revealed",
-                value=f"**{len(game.revealed)}** / {game.board_size - game.num_mines}",
+                value=f"**{len(game.revealed)}** / {self.game.board_size - self.game.num_mines}",
                 inline=True
             )
             embed.set_footer(text="Click a tile to reveal it, or click Cash Out to collect your winnings!")
@@ -1333,6 +1340,24 @@ async def resync(interaction: discord.Interaction):
         await interaction.followup.send(f"❌ Sync failed: {e}", ephemeral=True)
 
 
+# Admin-only tool: clear global commands and re-sync the guild
+@tree.command(name="cleanupglobals", description="Admin: clear global slash commands and resync guild", guild=GUILD_OBJECT)
+@app_commands.guild_only()
+@app_commands.default_permissions(administrator=True)
+async def cleanupglobals(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True, thinking=True)
+    try:
+        await tree.clear_commands(guild=None)
+        await tree.sync(guild=None)
+        await tree.sync(guild=GUILD_OBJECT)
+        await interaction.followup.send(
+            "✅ Cleared global commands and re-synced guild commands.",
+            ephemeral=True,
+        )
+    except Exception as e:
+        await interaction.followup.send(f"❌ Cleanup failed: {e}", ephemeral=True)
+
+
 @client.event
 async def on_ready():
     try:
@@ -1340,9 +1365,25 @@ async def on_ready():
     except Exception:
         print("✅ Logged in")
 
-    # Sync guild-scoped commands only for the target guild
-    await tree.sync(guild=GUILD_OBJECT)
-    print(f"⚡ Slash commands synced to guild {GUILD_ID}")
+    # Optional one-time global cleanup to remove any globally-registered commands
+    if GLOBAL_COMMAND_CLEANUP:
+        try:
+            print("🧹 Clearing GLOBAL application commands...")
+            await tree.clear_commands(guild=None)
+            await tree.sync(guild=None)
+            print("✅ Global commands cleared.")
+        except Exception as e:
+            print(f"❌ Failed to clear global commands: {e}")
+
+    # Conditionally sync guild commands to avoid duplicate syncing across multiple instances
+    if SYNC_COMMANDS:
+        try:
+            await tree.sync(guild=GUILD_OBJECT)
+            print(f"⚡ Slash commands synced to guild {GUILD_ID}")
+        except Exception as e:
+            print(f"❌ Guild sync failed: {e}")
+    else:
+        print("⏭️ Skipping guild sync because SYNC_COMMANDS=false")
 
 
 TOKEN = os.getenv("DISCORD_TOKEN")
