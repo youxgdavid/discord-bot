@@ -1532,7 +1532,7 @@ async def timeout_member(
         pass
 
     try:
-        await member.timeout(until=until, reason=reason or f"Timed out by {interaction.user}")
+        await member.timeout(until, reason=reason or f"Timed out by {interaction.user}")
         embed = make_mod_embed(
             title="⏳ Member Timed Out",
             color=discord.Color.blurple(),
