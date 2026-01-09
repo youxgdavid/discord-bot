@@ -1384,6 +1384,12 @@ async def on_ready():
             print(f"❌ Guild sync failed: {e}")
     else:
         print("⏭️ Skipping guild sync because SYNC_COMMANDS=false")
+        try:
+            # Fetch existing guild commands so the bot can route interactions without altering remote state
+            await tree.fetch_commands(guild=GUILD_OBJECT)
+            print("🔎 Fetched existing guild commands for routing.")
+        except Exception as e:
+            print(f"❌ Failed to fetch guild commands: {e}")
 
 
 TOKEN = os.getenv("DISCORD_TOKEN")
