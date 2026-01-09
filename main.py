@@ -2,7 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from discord.ui import Button, View
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, cast
 import os
 import random
@@ -86,6 +86,26 @@ def update_balance(user_id, amount):
 def can_afford(user_id, amount):
     """Check if player can afford the amount"""
     return get_balance(user_id) >= amount
+
+
+def make_mod_embed(title, color, *, user, moderator, reason=None, extra_fields=None):
+    """Build a consistent moderation embed UI."""
+    embed = discord.Embed(
+        title=title,
+        color=color,
+        timestamp=datetime.now(timezone.utc)
+    )
+    try:
+        embed.set_thumbnail(url=user.display_avatar.url)
+    except Exception:
+        pass
+    embed.add_field(name="Member", value=f"{getattr(user, 'mention', str(user))} (`{user.id}`)", inline=False)
+    embed.add_field(name="Moderator", value=f"{getattr(moderator, 'mention', str(moderator))}", inline=True)
+    embed.add_field(name="Reason", value=reason or "No reason provided", inline=True)
+    if extra_fields:
+        for name, value, inline in extra_fields:
+            embed.add_field(name=name, value=value, inline=inline)
+    return embed
 
 
 @client.event
@@ -904,7 +924,7 @@ class MinesButton(Button):
             )
             embed.add_field(
                 name="Revealed",
-                value=f"**{len(game.revealed)}** / {self.game.board_size - self.game.num_mines}",
+                value=f"**{len(game.revealed)}** / {game.board_size - game.num_mines}",
                 inline=True
             )
             embed.set_footer(text="Click a tile to reveal it, or click Cash Out to collect your winnings!")
@@ -1356,6 +1376,176 @@ async def cleanupglobals(interaction: discord.Interaction):
         )
     except Exception as e:
         await interaction.followup.send(f"❌ Cleanup failed: {e}", ephemeral=True)
+
+
+# --- Moderation Commands ---
+@tree.command(name="ban", description="Ban a member from the server", guild=GUILD_OBJECT)
+@app_commands.guild_only()
+@app_commands.describe(member="Member to ban", reason="Reason for the ban", delete_days="Delete message history (0-7 days)")
+@app_commands.checks.has_permissions(ban_members=True)
+async def ban_member(
+    interaction: discord.Interaction,
+    member: discord.Member,
+    reason: Optional[str] = None,
+    delete_days: app_commands.Range[int, 0, 7] = 0,
+):
+    if member.id == interaction.user.id:
+        await interaction.response.send_message("❌ You cannot ban yourself.", ephemeral=True)
+        return
+    if interaction.guild and interaction.guild.owner_id == member.id:
+        await interaction.response.send_message("❌ You cannot ban the server owner.", ephemeral=True)
+        return
+    if interaction.guild and interaction.user != interaction.guild.owner and interaction.user.top_role <= member.top_role:
+        await interaction.response.send_message("❌ You cannot ban a member with an equal or higher role.", ephemeral=True)
+        return
+    me = interaction.guild.me if interaction.guild else None
+    if me and me.top_role <= member.top_role:
+        await interaction.response.send_message("❌ I cannot ban that member due to role hierarchy.", ephemeral=True)
+        return
+
+    # Try DM first (before ban blocks DMs)
+    dm_embed = make_mod_embed(
+        title=f"You have been banned from {interaction.guild.name}",
+        color=discord.Color.red(),
+        user=member,
+        moderator=interaction.user,
+        reason=reason,
+    )
+    try:
+        await member.send(embed=dm_embed)
+    except discord.Forbidden:
+        pass
+    except Exception:
+        pass
+
+    try:
+        await member.ban(reason=reason or f"Banned by {interaction.user}", delete_message_seconds=int(delete_days) * 86400)
+        embed = make_mod_embed(
+            title="🔨 Member Banned",
+            color=discord.Color.red(),
+            user=member,
+            moderator=interaction.user,
+            reason=reason,
+            extra_fields=[("Deleted Messages", f"{delete_days} days", True)],
+        )
+        await interaction.response.send_message(embed=embed)
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ I lack permission to ban this member.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Ban failed: {e}", ephemeral=True)
+
+
+@tree.command(name="kick", description="Kick a member from the server", guild=GUILD_OBJECT)
+@app_commands.guild_only()
+@app_commands.describe(member="Member to kick", reason="Reason for the kick")
+@app_commands.checks.has_permissions(kick_members=True)
+async def kick_member(
+    interaction: discord.Interaction,
+    member: discord.Member,
+    reason: Optional[str] = None,
+):
+    if member.id == interaction.user.id:
+        await interaction.response.send_message("❌ You cannot kick yourself.", ephemeral=True)
+        return
+    if interaction.guild and interaction.guild.owner_id == member.id:
+        await interaction.response.send_message("❌ You cannot kick the server owner.", ephemeral=True)
+        return
+    if interaction.guild and interaction.user != interaction.guild.owner and interaction.user.top_role <= member.top_role:
+        await interaction.response.send_message("❌ You cannot kick a member with an equal or higher role.", ephemeral=True)
+        return
+    me = interaction.guild.me if interaction.guild else None
+    if me and me.top_role <= member.top_role:
+        await interaction.response.send_message("❌ I cannot kick that member due to role hierarchy.", ephemeral=True)
+        return
+
+    # DM prior to kick
+    dm_embed = make_mod_embed(
+        title=f"You have been kicked from {interaction.guild.name}",
+        color=discord.Color.orange(),
+        user=member,
+        moderator=interaction.user,
+        reason=reason,
+    )
+    try:
+        await member.send(embed=dm_embed)
+    except discord.Forbidden:
+        pass
+    except Exception:
+        pass
+
+    try:
+        await member.kick(reason=reason or f"Kicked by {interaction.user}")
+        embed = make_mod_embed(
+            title="👢 Member Kicked",
+            color=discord.Color.orange(),
+            user=member,
+            moderator=interaction.user,
+            reason=reason,
+        )
+        await interaction.response.send_message(embed=embed)
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ I lack permission to kick this member.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Kick failed: {e}", ephemeral=True)
+
+
+@tree.command(name="timeout", description="Timeout a member for a duration (1-40320 minutes)", guild=GUILD_OBJECT)
+@app_commands.guild_only()
+@app_commands.describe(member="Member to timeout", minutes="Duration in minutes (1-40320)", reason="Reason for timeout")
+@app_commands.checks.has_permissions(moderate_members=True)
+async def timeout_member(
+    interaction: discord.Interaction,
+    member: discord.Member,
+    minutes: app_commands.Range[int, 1, 40320],
+    reason: Optional[str] = None,
+):
+    if member.id == interaction.user.id:
+        await interaction.response.send_message("❌ You cannot timeout yourself.", ephemeral=True)
+        return
+    if interaction.guild and interaction.guild.owner_id == member.id:
+        await interaction.response.send_message("❌ You cannot timeout the server owner.", ephemeral=True)
+        return
+    if interaction.guild and interaction.user != interaction.guild.owner and interaction.user.top_role <= member.top_role:
+        await interaction.response.send_message("❌ You cannot timeout a member with an equal or higher role.", ephemeral=True)
+        return
+    me = interaction.guild.me if interaction.guild else None
+    if me and me.top_role <= member.top_role:
+        await interaction.response.send_message("❌ I cannot timeout that member due to role hierarchy.", ephemeral=True)
+        return
+
+    until = datetime.now(timezone.utc) + timedelta(minutes=int(minutes))
+
+    # DM prior to timeout
+    dm_embed = make_mod_embed(
+        title=f"You have been timed out in {interaction.guild.name}",
+        color=discord.Color.blurple(),
+        user=member,
+        moderator=interaction.user,
+        reason=reason,
+        extra_fields=[("Duration", f"{int(minutes)} minute(s)", True)],
+    )
+    try:
+        await member.send(embed=dm_embed)
+    except discord.Forbidden:
+        pass
+    except Exception:
+        pass
+
+    try:
+        await member.timeout(until=until, reason=reason or f"Timed out by {interaction.user}")
+        embed = make_mod_embed(
+            title="⏳ Member Timed Out",
+            color=discord.Color.blurple(),
+            user=member,
+            moderator=interaction.user,
+            reason=reason,
+            extra_fields=[("Duration", f"{int(minutes)} minute(s)", True)],
+        )
+        await interaction.response.send_message(embed=embed)
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ I lack permission to timeout this member.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Timeout failed: {e}", ephemeral=True)
 
 
 @client.event
