@@ -817,6 +817,196 @@ async def wordle(interaction: discord.Interaction):
 
     await interaction.response.send_message(embed=embed, view=view)
 
+# --- BACCARAT GAME ---
+class BaccaratGame:
+    def __init__(self, user_id: int, bet: int, side: str):
+        # side in {"player", "banker", "tie"}
+        self.user_id = user_id
+        self.bet = bet
+        self.side = side
+        self.shoe = self._build_shoe()
+        self.player_hand = []
+        self.banker_hand = []
+        self.finished = False
+        self.outcome = None  # "player", "banker", "tie"
+        self.payout = 0
+        self._deal_initial()
+        self._resolve_naturals_or_draws()
+
+    def _build_shoe(self):
+        # 6-deck shoe for better randomness; map ranks to Baccarat values
+        ranks = ['A'] + [str(i) for i in range(2, 10)] + ['10', 'J', 'Q', 'K']
+        deck = ranks * 4  # one deck
+        shoe = deck * 6
+        random.shuffle(shoe)
+        return shoe
+
+    def _value(self, card_rank: str) -> int:
+        if card_rank == 'A':
+            return 1
+        if card_rank in ['10', 'J', 'Q', 'K']:
+            return 0
+        return int(card_rank)
+
+    def _score(self, hand) -> int:
+        return sum(self._value(r) for r in hand) % 10
+
+    def _draw(self):
+        if not self.shoe:
+            self.shoe = self._build_shoe()
+        return self.shoe.pop()
+
+    def _deal_initial(self):
+        self.player_hand = [self._draw(), self._draw()]
+        self.banker_hand = [self._draw(), self._draw()]
+
+    def _resolve_naturals_or_draws(self):
+        p, b = self._score(self.player_hand), self._score(self.banker_hand)
+        # Natural 8/9 stops draw
+        if p in (8, 9) or b in (8, 9):
+            self._finalize()
+            return
+        # Third-card rules
+        third_player = None
+        if p <= 5:
+            third_player = self._draw()
+            self.player_hand.append(third_player)
+            p = self._score(self.player_hand)
+        # Banker draw rules depend on player's third card
+        b_score = self._score(self.banker_hand)
+        if third_player is None:
+            if b_score <= 5:
+                self.banker_hand.append(self._draw())
+        else:
+            tp_val = self._value(third_player)
+            # Banker drawing table
+            if b_score <= 2:
+                self.banker_hand.append(self._draw())
+            elif b_score == 3 and tp_val != 8:
+                self.banker_hand.append(self._draw())
+            elif b_score == 4 and tp_val in [2, 3, 4, 5, 6, 7]:
+                self.banker_hand.append(self._draw())
+            elif b_score == 5 and tp_val in [4, 5, 6, 7]:
+                self.banker_hand.append(self._draw())
+            elif b_score == 6 and tp_val in [6, 7]:
+                self.banker_hand.append(self._draw())
+        self._finalize()
+
+    def _finalize(self):
+        self.finished = True
+        p, b = self._score(self.player_hand), self._score(self.banker_hand)
+        if p > b:
+            self.outcome = "player"
+        elif b > p:
+            self.outcome = "banker"
+        else:
+            self.outcome = "tie"
+        self._calc_payout()
+
+    def _calc_payout(self):
+        # Standard payouts: Player 1:1, Banker 0.95:1, Tie 8:1
+        if self.outcome == self.side:
+            if self.side == "player":
+                self.payout = self.bet * 2  # return + profit
+            elif self.side == "banker":
+                win = int(self.bet * 1.95)
+                self.payout = win  # includes original bet
+            else:
+                self.payout = self.bet * 9
+        else:
+            # If tie occurs but bet was player/banker, bet is lost (common rules)
+            self.payout = 0
+
+    def hand_string(self, hand):
+        # Clean compact string like A 9 | J (total 0-9)
+        return " ".join(hand)
+
+    def board_embed(self):
+        p_score, b_score = self._score(self.player_hand), self._score(self.banker_hand)
+        color = discord.Color.green() if self.outcome == self.side else discord.Color.red() if self.outcome else discord.Color.blurple()
+        title = "Baccarat — Result" if self.finished else "Baccarat"
+        embed = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
+        embed.add_field(name="Player", value=f"{self.hand_string(self.player_hand)}\nTotal: **{p_score}**", inline=True)
+        embed.add_field(name="Banker", value=f"{self.hand_string(self.banker_hand)}\nTotal: **{b_score}**", inline=True)
+        bet_label = self.side.capitalize()
+        embed.add_field(name="Your Bet", value=f"{bet_label} — ${self.bet:,}", inline=False)
+        # Fancy result banner
+        if self.finished:
+            if self.outcome == 'tie':
+                result = "It’s a TIE!"
+            else:
+                result = f"{self.outcome.upper()} wins"
+            payout_text = f"Payout: **${self.payout:,}**" if self.payout else f"Lost: **${self.bet:,}**"
+            embed.description = f"🎴 {result}\n{payout_text}"
+        embed.set_footer(text="Baccarat • 6-deck shoe • Banker commission on wins")
+        return embed
+
+
+class BaccaratView(View):
+    def __init__(self, game: 'BaccaratGame'):
+        super().__init__(timeout=120)
+        self.game = game
+        # Only a "New Round" button when finished, otherwise none (game resolves instantly)
+        if game.finished:
+            self.add_item(BaccaratNewRoundButton())
+
+    async def on_timeout(self):
+        pass
+
+
+class BaccaratNewRoundButton(Button):
+    def __init__(self):
+        super().__init__(label="New Round", style=discord.ButtonStyle.secondary, emoji="🔄")
+
+    async def callback(self, interaction: discord.Interaction):
+        # No session persisted; just instruct the user to run /baccarat again
+        await interaction.response.send_message("Use /baccarat to start a new round.", ephemeral=True)
+
+
+@tree.command(name="baccarat", description="Play Baccarat: bet on Player, Banker, or Tie with a sleek UI")
+@app_commands.describe(bet="Amount to bet (min 100)", side="Choose your bet: player, banker, or tie")
+@app_commands.choices(side=[
+    app_commands.Choice(name="Player", value="player"),
+    app_commands.Choice(name="Banker", value="banker"),
+    app_commands.Choice(name="Tie", value="tie"),
+])
+async def baccarat(interaction: discord.Interaction, bet: int, side: app_commands.Choice[str]):
+    # Validate bet
+    if bet < 100:
+        await interaction.response.send_message("❌ Minimum bet is $100!", ephemeral=True)
+        return
+    if bet > 1000000:
+        await interaction.response.send_message("❌ Maximum bet is $1,000,000!", ephemeral=True)
+        return
+
+    # Check balance
+    if not can_afford(interaction.user.id, bet):
+        bal = get_balance(interaction.user.id)
+        await interaction.response.send_message(f"❌ You don't have enough money! Your balance: ${bal:,}", ephemeral=True)
+        return
+
+    # Deduct bet
+    update_balance(interaction.user.id, -bet)
+
+    game = BaccaratGame(interaction.user.id, bet, side.value)
+
+    # Compute winnings and update balance if any
+    if game.payout:
+        profit = game.payout - bet
+        update_balance(interaction.user.id, game.payout)  # since bet already deducted, add back full payout
+        result_note = f"✅ You won ${profit:,}!" if profit > 0 else "🤝 Push"
+    else:
+        result_note = f"❌ You lost ${bet:,}."
+
+    # Build slick UI with gradient-like feel via emojis and clean layout
+    embed = game.board_embed()
+    banner = "🟩" if game.outcome == game.side else "🟥"
+    header = f"{banner} Bet: {side.name} • ${bet:,}"
+    embed.insert_field_at(0, name="", value=header, inline=False)
+
+    view = BaccaratView(game)
+    await interaction.response.send_message(embed=embed, view=view)
+
 # --- MINES GAME ---
 class MinesGame:
     def __init__(self, user_id, bet_amount, num_mines):
