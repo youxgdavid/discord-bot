@@ -139,12 +139,12 @@ async def on_member_join(member: discord.Member):
         pass
 
 # --- /ping command ---
-@tree.command(name="ping", description="Check if the bot is working", guild=GUILD_OBJECT)
+@tree.command(name="ping", description="Check if the bot is working")
 async def ping(interaction: discord.Interaction):
     await interaction.response.send_message("🏓 Pong! The bot is working.")
 
 # --- /userinfo command ---
-@tree.command(name="userinfo", description="Show information about a user", guild=GUILD_OBJECT)
+@tree.command(name="userinfo", description="Show information about a user")
 @app_commands.guild_only()
 async def userinfo(interaction: discord.Interaction, member: Optional[discord.Member] = None):
     if member is None:
@@ -172,7 +172,7 @@ async def userinfo(interaction: discord.Interaction, member: Optional[discord.Me
     await interaction.response.send_message(embed=embed)
 
 # --- /balance command ---
-@tree.command(name="balance", description="Check your current balance", guild=GUILD_OBJECT)
+@tree.command(name="balance", description="Check your current balance")
 async def balance(interaction: discord.Interaction):
     user_balance = get_balance(interaction.user.id)
 
@@ -698,7 +698,7 @@ class GuessButton(discord.ui.Button):
         await interaction.response.send_modal(WordleGuessModal(self.view.game, self.view))
 
 # --- /blackjack command ---
-@tree.command(name="blackjack", description="Play a game of Blackjack with betting!", guild=GUILD_OBJECT)
+@tree.command(name="blackjack", description="Play a game of Blackjack with betting!")
 @app_commands.describe(bet="Amount to bet (minimum 100)")
 async def blackjack(interaction: discord.Interaction, bet: int = 100):
     # Validate bet amount
@@ -790,7 +790,7 @@ async def blackjack(interaction: discord.Interaction, bet: int = 100):
         await interaction.response.send_message(embed=embed, view=view)
 
 # --- /wordle command ---
-@tree.command(name="wordle", description="Play a game of Wordle! Guess the 5-letter word in 5 tries.", guild=GUILD_OBJECT)
+@tree.command(name="wordle", description="Play a game of Wordle! Guess the 5-letter word in 5 tries.")
 async def wordle(interaction: discord.Interaction):
     game = WordleGame()
     view = WordleView(game, interaction.user.id)
@@ -982,7 +982,7 @@ class CashOutButton(Button):
         await interaction.response.edit_message(embed=embed, view=self.view)
         del mines_games[interaction.user.id]
 
-@tree.command(name="mines", description="Play a mines game - reveal tiles without hitting mines!", guild=GUILD_OBJECT)
+@tree.command(name="mines", description="Play a mines game - reveal tiles without hitting mines!")
 @app_commands.describe(
     bet="Amount to bet",
     mines="Number of mines (1-10)"
@@ -1027,7 +1027,7 @@ async def mines(interaction: discord.Interaction, bet: int, mines: int = 3):
     view = MinesView(game)
     await interaction.response.send_message(embed=embed, view=view)
 
-@tree.command(name="clearmines", description="Clear your stuck mines game", guild=GUILD_OBJECT)
+@tree.command(name="clearmines", description="Clear your stuck mines game")
 async def clearmines(interaction: discord.Interaction):
     if interaction.user.id in mines_games:
         del mines_games[interaction.user.id]
@@ -1180,7 +1180,7 @@ class TowerView(View):
             del tower_games[self.game.user_id]
 
 
-@tree.command(name="tower", description="Play a Tower casino game - climb levels and avoid bombs!", guild=GUILD_OBJECT)
+@tree.command(name="tower", description="Play a Tower casino game - climb levels and avoid bombs!")
 @app_commands.describe(bet="Amount to bet")
 async def tower(interaction: discord.Interaction, bet: int):
     if bet < 100:
@@ -1210,7 +1210,7 @@ async def tower(interaction: discord.Interaction, bet: int):
     await interaction.response.send_message(embed=embed, view=view)
 
 
-@tree.command(name="cleartower", description="Clear your stuck tower game", guild=GUILD_OBJECT)
+@tree.command(name="cleartower", description="Clear your stuck tower game")
 async def cleartower(interaction: discord.Interaction):
     if interaction.user.id in tower_games:
         del tower_games[interaction.user.id]
@@ -1219,7 +1219,7 @@ async def cleartower(interaction: discord.Interaction):
         await interaction.response.send_message("You don't have an active Tower game.", ephemeral=True)
 
 # --- LEADERBOARD COMMAND ---
-@tree.command(name="leaderboard", description="View the top players by total balance", guild=GUILD_OBJECT)
+@tree.command(name="leaderboard", description="View the top players by total balance")
 async def leaderboard(interaction: discord.Interaction):
     balances = load_balances()
     if not balances:
@@ -1268,7 +1268,6 @@ HF_MODEL = "stabilityai/stable-diffusion-xl-base-1.0"
 @tree.command(
     name="recreate",
     description="Generate an image from text using Hugging Face (Stable Diffusion XL)",
-    guild=GUILD_OBJECT,
 )
 @app_commands.describe(
     scene="Describe what you want to generate, e.g. 'Draw my Minecraft base as an ancient ruin'"
@@ -1346,7 +1345,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
     await interaction.followup.send(embed=embed, file=file)
 
 # --- Force re-sync ---
-@tree.command(name="resync", description="Force resync slash commands", guild=GUILD_OBJECT)
+@tree.command(name="resync", description="Force resync slash commands")
 @app_commands.guild_only()
 async def resync(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True, thinking=True)
@@ -1361,7 +1360,7 @@ async def resync(interaction: discord.Interaction):
 
 
 # Admin-only tool: clear global commands and re-sync the guild
-@tree.command(name="cleanupglobals", description="Admin: clear global slash commands and resync guild", guild=GUILD_OBJECT)
+@tree.command(name="cleanupglobals", description="Admin: clear global slash commands and resync guild")
 @app_commands.guild_only()
 @app_commands.default_permissions(administrator=True)
 async def cleanupglobals(interaction: discord.Interaction):
@@ -1379,7 +1378,7 @@ async def cleanupglobals(interaction: discord.Interaction):
 
 
 # --- Moderation Commands ---
-@tree.command(name="ban", description="Ban a member from the server", guild=GUILD_OBJECT)
+@tree.command(name="ban", description="Ban a member from the server")
 @app_commands.guild_only()
 @app_commands.describe(member="Member to ban", reason="Reason for the ban", delete_days="Delete message history (0-7 days)")
 @app_commands.checks.has_permissions(ban_members=True)
@@ -1435,7 +1434,7 @@ async def ban_member(
         await interaction.response.send_message(f"❌ Ban failed: {e}", ephemeral=True)
 
 
-@tree.command(name="kick", description="Kick a member from the server", guild=GUILD_OBJECT)
+@tree.command(name="kick", description="Kick a member from the server")
 @app_commands.guild_only()
 @app_commands.describe(member="Member to kick", reason="Reason for the kick")
 @app_commands.checks.has_permissions(kick_members=True)
@@ -1489,7 +1488,7 @@ async def kick_member(
         await interaction.response.send_message(f"❌ Kick failed: {e}", ephemeral=True)
 
 
-@tree.command(name="timeout", description="Timeout a member for a duration (1-40320 minutes)", guild=GUILD_OBJECT)
+@tree.command(name="timeout", description="Timeout a member for a duration (1-40320 minutes)")
 @app_commands.guild_only()
 @app_commands.describe(member="Member to timeout", minutes="Duration in minutes (1-40320)", reason="Reason for timeout")
 @app_commands.checks.has_permissions(moderate_members=True)
@@ -1548,7 +1547,7 @@ async def timeout_member(
         await interaction.response.send_message(f"❌ Timeout failed: {e}", ephemeral=True)
 
 
-@tree.command(name="untimeout", description="Remove timeout from a member", guild=GUILD_OBJECT)
+@tree.command(name="untimeout", description="Remove timeout from a member")
 @app_commands.guild_only()
 @app_commands.describe(member="Member to remove timeout", reason="Reason for removing timeout")
 @app_commands.checks.has_permissions(moderate_members=True)
@@ -1598,7 +1597,7 @@ async def untimeout_member(
         await interaction.response.send_message(f"❌ Failed to remove timeout: {e}", ephemeral=True)
 
 
-@tree.command(name="unban", description="Unban a user from the server", guild=GUILD_OBJECT)
+@tree.command(name="unban", description="Unban a user from the server")
 @app_commands.guild_only()
 @app_commands.describe(user="User to unban", reason="Reason for unban")
 @app_commands.checks.has_permissions(ban_members=True)
@@ -1658,16 +1657,16 @@ async def on_ready():
     # Conditionally sync guild commands to avoid duplicate syncing across multiple instances
     if SYNC_COMMANDS:
         try:
-            await tree.sync(guild=GUILD_OBJECT)
-            print(f"⚡ Slash commands synced to guild {GUILD_ID}")
+            await tree.sync()
+            print("⚡ Global slash commands synced (propagation can take up to ~1 hour)")
         except Exception as e:
             print(f"❌ Guild sync failed: {e}")
     else:
         print("⏭️ Skipping guild sync because SYNC_COMMANDS=false")
         try:
             # Fetch existing guild commands so the bot can route interactions without altering remote state
-            await tree.fetch_commands(guild=GUILD_OBJECT)
-            print("🔎 Fetched existing guild commands for routing.")
+            await tree.fetch_commands()
+            print("🔎 Fetched existing global commands for routing.")
         except Exception as e:
             print(f"❌ Failed to fetch guild commands: {e}")
 
