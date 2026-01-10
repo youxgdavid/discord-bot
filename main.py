@@ -1661,8 +1661,11 @@ async def on_ready():
         try:
             await tree.sync()
             print("⚡ Global slash commands synced (propagation can take up to ~1 hour)")
+            # Temporary dual-sync: also sync test guild for instant updates
+            await tree.sync(guild=GUILD_OBJECT)
+            print(f"⚡ Guild {GUILD_ID} slash commands synced instantly for testing")
         except Exception as e:
-            print(f"❌ Guild sync failed: {e}")
+            print(f"❌ Sync failed: {e}")
     else:
         print("⏭️ Skipping guild sync because SYNC_COMMANDS=false")
         try:
