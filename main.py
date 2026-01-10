@@ -12,6 +12,8 @@ import aiohttp
 from flask import Flask
 from threading import Thread
 import tempfile
+import io
+import re
 
 # Create Flask app for uptime (e.g., Render)
 app = Flask(__name__)
@@ -1452,6 +1454,92 @@ async def leaderboard(interaction: discord.Interaction):
         pass
 
     await interaction.response.send_message(embed=embed)
+
+# --- Clip That (chat) ---
+@tree.command(name="clipthat", description="Clip last N seconds of chat into a clean log file")
+@app_commands.describe(
+    title="Title for the clip",
+    seconds="Duration to capture (10-300 seconds)",
+    include_attachments="Include attachment URLs in the clip"
+)
+async def clipthat(
+    interaction: discord.Interaction,
+    title: str,
+    seconds: app_commands.Range[int, 10, 300] = 60,
+    include_attachments: bool = True,
+):
+    channel = interaction.channel
+    if not isinstance(channel, (discord.TextChannel, discord.Thread)):
+        await interaction.response.send_message("Use this command in a text channel or thread.", ephemeral=True)
+        return
+
+    await interaction.response.defer(thinking=True)
+
+    window_start = datetime.now(timezone.utc) - timedelta(seconds=int(seconds))
+
+    # Gather messages in the window in chronological order
+    messages = []
+    try:
+        async for msg in channel.history(limit=1000, after=window_start, oldest_first=True):
+            messages.append(msg)
+    except Exception as e:
+        await interaction.followup.send(f"❌ Failed to read history: {e}", ephemeral=True)
+        return
+
+    if not messages:
+        await interaction.followup.send("No messages in the selected window.", ephemeral=True)
+        return
+
+    # Sanitize title for filename
+    safe_title = re.sub(r"[^A-Za-z0-9 _-]+", "", title).strip() or "clip"
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    filename = f"{safe_title}_{ts}.txt"
+
+    # Build the transcript
+    lines = []
+    header = f"=== Clip: {title} ===\nChannel: #{channel.name if hasattr(channel, 'name') else channel.id}\nWindow: last {seconds}s (since {window_start.strftime('%Y-%m-%d %H:%M:%S UTC')})\nGenerated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n=== Messages ===\n"
+    lines.append(header)
+
+    for m in messages:
+        time_str = m.created_at.strftime('%H:%M:%S') + " UTC"
+        author = f"{m.author.display_name} (@{m.author.name})"
+        base = f"[{time_str}] {author}: {m.clean_content}".rstrip()
+        lines.append(base)
+        if m.reference and m.reference.resolved:
+            ref = m.reference.resolved
+            ref_author = getattr(ref.author, 'display_name', 'unknown')
+            excerpt = (ref.clean_content or '').replace('\n', ' ')
+            if len(excerpt) > 80:
+                excerpt = excerpt[:77] + '...'
+            lines.append(f"  ↩ reply to {ref_author}: {excerpt}")
+        if include_attachments and m.attachments:
+            for a in m.attachments:
+                lines.append(f"  📎 attachment: {a.filename} <{a.url}>")
+        if m.stickers:
+            for s in m.stickers:
+                lines.append(f"  🩹 sticker: {s.name}")
+        if m.embeds:
+            lines.append(f"  🔗 embeds: {len(m.embeds)}")
+
+    transcript = "\n".join(lines)
+
+    # Create in-memory file
+    data = io.BytesIO(transcript.encode('utf-8'))
+    file = discord.File(data, filename=filename)
+
+    # Build a slick summary embed
+    embed = discord.Embed(
+        title=f"🎬 Clip Saved: {title}",
+        description="A clean transcript of recent messages has been attached.",
+        color=discord.Color.blurple(),
+        timestamp=datetime.now(timezone.utc)
+    )
+    embed.add_field(name="Channel", value=channel.mention if hasattr(channel, 'mention') else str(channel.id), inline=True)
+    embed.add_field(name="Duration", value=f"{seconds}s", inline=True)
+    embed.add_field(name="Messages", value=str(len(messages)), inline=True)
+    embed.set_footer(text=f"Requested by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+
+    await interaction.followup.send(embed=embed, file=file)
 
 # --- Image generation via Hugging Face Inference API ---
 HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
