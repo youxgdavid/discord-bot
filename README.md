@@ -37,6 +37,7 @@ Your all-in-one **Discord entertainment bot** — complete with casino-style gam
 | 🧩 **Wordle** | Guess the 5-letter word in 5 tries | ![Status](https://img.shields.io/badge/✔-Available-brightgreen) |
 | 💣 **Mines** | Reveal tiles, avoid mines to increase multiplier | ![Status](https://img.shields.io/badge/✔-Available-brightgreen) |
 | 🧱 **Tower Game** | Climb levels, avoid bombs, and cash out | ![Status](https://img.shields.io/badge/✔-Available-brightgreen) |
+| 🧱 **Baccarat** | Bet and play against the dealer | ![Status](https://img.shields.io/badge/✔-Available-brightgreen) |
 
 ---
 
@@ -108,6 +109,7 @@ python main.py
 ```bash
 DISCORD_TOKEN=<your_bot_token>
 GUILD_ID=<your_guild_id>  # optional for faster command sync
+
 
 
 
