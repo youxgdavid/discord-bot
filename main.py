@@ -1366,7 +1366,7 @@ async def resync(interaction: discord.Interaction):
 async def cleanupglobals(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True, thinking=True)
     try:
-        await tree.clear_commands(guild=None)
+        tree.clear_commands(guild=None)
         await tree.sync(guild=None)
         await tree.sync(guild=GUILD_OBJECT)
         await interaction.followup.send(
@@ -1648,7 +1648,7 @@ async def on_ready():
     if GLOBAL_COMMAND_CLEANUP:
         try:
             print("🧹 Clearing GLOBAL application commands...")
-            await tree.clear_commands(guild=None)
+            tree.clear_commands(guild=None)
             await tree.sync(guild=None)
             print("✅ Global commands cleared.")
         except Exception as e:
