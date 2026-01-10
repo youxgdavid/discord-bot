@@ -263,7 +263,8 @@ class WordleGame:
             "WHITE", "WHOLE", "WHOSE", "WOMAN", "WOMEN", "WORLD", "WORRY", "WORSE", "WORST", "WORTH",
             "WOULD", "WRITE", "WRONG", "WROTE", "YOUNG", "YOUTH"
         ]
-        self.target_word = random.choice(self.word_list)
+        self.word_len = random.randint(1, 5)
+        self.target_word = ''.join(random.choice('ABCDEFGHIJKLMNOPQRSTUVWXYZ') for _ in range(self.word_len))
         self.guesses = []
         self.max_guesses = 5
         self.game_over = False
@@ -271,8 +272,8 @@ class WordleGame:
 
     def make_guess(self, guess):
         """Process a guess and return the result"""
-        if len(guess) != 5:
-            return None, "Guess must be exactly 5 letters!"
+        if len(guess) != self.word_len:
+            return None, f"Guess must be exactly {self.word_len} letters!"
 
         if not guess.isalpha():
             return None, "Guess must contain only letters!"
@@ -302,7 +303,7 @@ class WordleGame:
         guess_letters = list(guess)
 
         # First pass: mark exact matches (green)
-        for i in range(5):
+        for i in range(self.word_len):
             if guess_letters[i] == target_letters[i]:
                 result.append("🟩")  # Green for correct position
                 target_letters[i] = None  # Mark as used
@@ -311,7 +312,7 @@ class WordleGame:
                 result.append("⬜")  # Default to white
 
         # Second pass: mark partial matches (yellow)
-        for i in range(5):
+        for i in range(self.word_len):
             if guess_letters[i] is not None and guess_letters[i] in target_letters:
                 result[i] = "🟨"  # Yellow for wrong position
                 target_letters[target_letters.index(guess_letters[i])] = None  # Mark as used
@@ -322,7 +323,7 @@ class WordleGame:
         """Get the display word with correct letters revealed"""
         if self.game_over and not self.won:
             return self.target_word
-        return "?????"
+        return "?" * self.word_len
 
     def get_guesses_display(self):
         """Get formatted display of all guesses"""
@@ -351,14 +352,14 @@ class WordleGame:
             guess_letters = list(guess)
 
             # First pass: find exact matches
-            for i in range(5):
+            for i in range(self.word_len):
                 if guess_letters[i] == target_letters[i]:
                     correct_letters.add(guess_letters[i])
                     target_letters[i] = None
                     guess_letters[i] = None
 
             # Second pass: find wrong position letters
-            for i in range(5):
+            for i in range(self.word_len):
                 if guess_letters[i] is not None and guess_letters[i] in target_letters:
                     wrong_position_letters.add(guess_letters[i])
                     target_letters[target_letters.index(guess_letters[i])] = None  # Mark as used
@@ -392,7 +393,8 @@ class WordleGame:
 
     def new_word(self):
         """Start a new game with a different word"""
-        self.target_word = random.choice(self.word_list)
+        self.word_len = random.randint(1, 5)
+        self.target_word = ''.join(random.choice('ABCDEFGHIJKLMNOPQRSTUVWXYZ') for _ in range(self.word_len))
         self.guesses = []
         self.game_over = False
         self.won = False
@@ -587,7 +589,7 @@ class WordleView(View):
         if message:
             embed.description = message
         else:
-            embed.description = f"Guess a 5-letter word! You have **{self.game.max_guesses - len(self.game.guesses)}** guesses left."
+            embed.description = f"Guess a {self.game.word_len}-letter word! You have **{self.game.max_guesses - len(self.game.guesses)}** guesses left."
 
         # Add game status
         status = "🎉 **WON!**" if self.game.won else "💀 **GAME OVER**" if self.game.game_over else "🔄 **IN PROGRESS**"
@@ -647,10 +649,10 @@ class WordleGuessModal(discord.ui.Modal):
         self.view = view
 
         self.guess_input = discord.ui.TextInput(
-            label="Enter your 5-letter word guess",
+            label=f"Enter your {self.game.word_len}-letter word guess",
             placeholder="Type your guess here...",
-            min_length=5,
-            max_length=5,
+            min_length=self.game.word_len,
+            max_length=self.game.word_len,
             style=discord.TextStyle.short
         )
         self.add_item(self.guess_input)
@@ -790,20 +792,20 @@ async def blackjack(interaction: discord.Interaction, bet: int = 100):
         await interaction.response.send_message(embed=embed, view=view)
 
 # --- /wordle command ---
-@tree.command(name="wordle", description="Play a game of Wordle! Guess the 5-letter word in 5 tries.")
+@tree.command(name="wordle", description="Play a game of Wordle! Guess a 1-5 letter word in 5 tries.")
 async def wordle(interaction: discord.Interaction):
     game = WordleGame()
     view = WordleView(game, interaction.user.id)
 
     embed = discord.Embed(
         title="🎯 Wordle Game",
-        description=f"Guess a 5-letter word! You have **{game.max_guesses}** guesses to get it right!",
+        description=f"Guess a {game.word_len}-letter word! You have **{game.max_guesses}** guesses to get it right!",
         color=discord.Color.orange(),
         timestamp=datetime.now(timezone.utc)
     )
 
     embed.add_field(name="Status", value="🔄 **IN PROGRESS**", inline=True)
-    embed.add_field(name="Target Word", value="`?????`", inline=True)
+    embed.add_field(name="Target Word", value=f"`{'?' * game.word_len}`", inline=True)
     embed.add_field(name="Your Guesses", value="No guesses yet", inline=False)
     embed.add_field(name="💡 Letter Hints", value="No hints yet - make your first guess!", inline=False)
     embed.add_field(
