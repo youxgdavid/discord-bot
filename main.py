@@ -1541,6 +1541,219 @@ async def clipthat(
 
     await interaction.followup.send(embed=embed, file=file)
 
+# --- Emoji Mosaic (image -> emoji grid) ---
+from typing import List, Tuple, Dict
+
+_emoji_avg_cache: Dict[int, Tuple[int,int,int]] = {}
+
+_unicode_square_palette: List[Tuple[str, Tuple[int,int,int]]] = [
+    ("🟥", (234, 67, 53)),
+    ("🟧", (244, 180, 0)),
+    ("🟨", (251, 188, 5)),
+    ("🟩", (52, 168, 83)),
+    ("🟦", (66, 133, 244)),
+    ("🟪", (156, 39, 176)),
+    ("⬛", (0, 0, 0)),
+    ("⬜", (245, 245, 245)),
+]
+
+async def _fetch_bytes(url: str) -> bytes:
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as resp:
+            if resp.status != 200:
+                raise RuntimeError(f"Failed to fetch {url} (HTTP {resp.status})")
+            return await resp.read()
+
+def _nearest_color(target: Tuple[int,int,int], palette: List[Tuple[Tuple[int,int,int], str]]) -> str:
+    tr, tg, tb = target
+    best = None
+    best_d = 1e18
+    for (r,g,b), token in palette:
+        dr = tr - r; dg = tg - g; db = tb - b
+        d = dr*dr + dg*dg + db*db
+        if d < best_d:
+            best_d = d; best = token
+    return best
+
+def _emoji_token(e: discord.Emoji) -> str:
+    # Renders as <:name:id> or <a:name:id>
+    return f"<a:{e.name}:{e.id}>" if e.animated else f"<:{e.name}:{e.id}>"
+
+async def _compute_emoji_avg_color(e: discord.Emoji) -> Tuple[int,int,int]:
+    if e.id in _emoji_avg_cache:
+        return _emoji_avg_cache[e.id]
+    try:
+        data = await _fetch_bytes(e.url)
+        try:
+            from PIL import Image
+        except Exception:
+            # If Pillow not installed, fallback to a neutral color
+            avg = (200, 200, 200)
+            _emoji_avg_cache[e.id] = avg
+            return avg
+        img = Image.open(io.BytesIO(data))
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+        img = img.resize((16,16))
+        pixels = list(img.getdata())
+        n = len(pixels)
+        r = sum(p[0] for p in pixels) // n
+        g = sum(p[1] for p in pixels) // n
+        b = sum(p[2] for p in pixels) // n
+        avg = (r,g,b)
+        _emoji_avg_cache[e.id] = avg
+        return avg
+    except Exception:
+        # On failure, use neutral gray
+        avg = (180,180,180)
+        _emoji_avg_cache[e.id] = avg
+        return avg
+
+@tree.command(name="emojimosaic", description="Convert an image into an emoji mosaic using this server's emojis")
+@app_commands.describe(
+    image="Attach the source image (PNG/JPEG)",
+    width="Number of emoji columns (10-60)",
+    theme="Use all, static, or animated emojis",
+    preview="Attach a PNG color-grid preview (requires Pillow)"
+)
+@app_commands.choices(theme=[
+    app_commands.Choice(name="All", value="all"),
+    app_commands.Choice(name="Static", value="static"),
+    app_commands.Choice(name="Animated", value="animated"),
+])
+async def emojimosaic(
+    interaction: discord.Interaction,
+    image: discord.Attachment,
+    width: app_commands.Range[int, 10, 60] = 30,
+    theme: app_commands.Choice[str] = None,
+    preview: bool = True,
+):
+    await interaction.response.defer(thinking=True)
+
+    # Validate attachment
+    if not image.content_type or not image.content_type.startswith('image/'):
+        await interaction.followup.send("❌ Please attach a valid image (PNG/JPEG).", ephemeral=True)
+        return
+
+    # Try to import Pillow lazily
+    try:
+        from PIL import Image, ImageDraw
+    except Exception:
+        await interaction.followup.send(
+            "❌ This command requires Pillow. Add 'Pillow>=9.0.0' to your requirements and redeploy.",
+            ephemeral=True
+        )
+        return
+
+    # Download user image
+    try:
+        img_bytes = await image.read()
+    except Exception as e:
+        await interaction.followup.send(f"❌ Failed to read image: {e}", ephemeral=True)
+        return
+
+    try:
+        src = Image.open(io.BytesIO(img_bytes))
+        if src.mode != 'RGB':
+            src = src.convert('RGB')
+    except Exception as e:
+        await interaction.followup.send(f"❌ Could not decode image: {e}", ephemeral=True)
+        return
+
+    # Determine target size
+    w, h = src.size
+    aspect = h / max(1, w)
+    tgt_w = int(width)
+    tgt_h = max(1, int(round(tgt_w * aspect)))
+    # Limit rows to avoid massive messages
+    if tgt_h > 60:
+        scale = 60 / tgt_h
+        tgt_w = max(10, int(round(tgt_w * scale)))
+        tgt_h = 60
+
+    # Resize to sampling grid
+    small = src.resize((tgt_w, tgt_h), Image.Resampling.BILINEAR)
+    pixels = list(small.getdata())  # row-major
+
+    # Build emoji palette
+    use_mode = (theme.value if theme else 'all')
+    emoji_palette: List[Tuple[Tuple[int,int,int], str]] = []
+
+    # Collect guild emojis
+    try:
+        if interaction.guild:
+            candidates = [e for e in interaction.guild.emojis]
+            if use_mode == 'static':
+                candidates = [e for e in candidates if not e.animated]
+            elif use_mode == 'animated':
+                candidates = [e for e in candidates if e.animated]
+            # Cap to avoid long first-time fetches
+            candidates = candidates[:150]
+            # Compute avg colors
+            for e in candidates:
+                avg = await _compute_emoji_avg_color(e)
+                emoji_palette.append((avg, _emoji_token(e)))
+    except Exception:
+        pass
+
+    # Fallback palette if no guild emojis
+    if not emoji_palette:
+        for ch, rgb in _unicode_square_palette:
+            emoji_palette.append((rgb, ch))
+
+    # Map pixels to emojis
+    lines: List[str] = []
+    idx = 0
+    for y in range(tgt_h):
+        row_tokens = []
+        for x in range(tgt_w):
+            r,g,b = pixels[idx]; idx += 1
+            token = _nearest_color((r,g,b), emoji_palette)
+            row_tokens.append(token)
+        lines.append(''.join(row_tokens))
+
+    mosaic_text = "\n".join(lines)
+
+    # Prepare files/embeds
+    files = []
+    embed = discord.Embed(
+        title="🧩 Emoji Mosaic",
+        description=f"Size: **{tgt_w}×{tgt_h}**  |  Emojis used: **{len(emoji_palette)}**",
+        color=discord.Color.purple(),
+        timestamp=datetime.now(timezone.utc),
+    )
+    embed.add_field(name="Source", value=image.filename or "image", inline=True)
+    embed.add_field(name="Theme", value=use_mode, inline=True)
+
+    # If message likely too long, attach as file
+    if len(mosaic_text) > 1500:
+        data = io.BytesIO(mosaic_text.encode('utf-8'))
+        files.append(discord.File(data, filename="mosaic.txt"))
+        embed.add_field(name="Mosaic", value="Attached as mosaic.txt (too large to inline)", inline=False)
+    else:
+        embed.add_field(name="Mosaic", value=mosaic_text, inline=False)
+
+    # Optional PNG preview (color blocks)
+    if preview:
+        try:
+            tile = 12
+            prev = Image.new('RGB', (tgt_w*tile, tgt_h*tile), (0,0,0))
+            draw = ImageDraw.Draw(prev)
+            idx = 0
+            for y in range(tgt_h):
+                for x in range(tgt_w):
+                    r,g,b = pixels[idx]; idx += 1
+                    draw.rectangle([x*tile, y*tile, x*tile+tile, y*tile+tile], fill=(r,g,b))
+            buf = io.BytesIO()
+            prev.save(buf, format='PNG')
+            buf.seek(0)
+            files.append(discord.File(buf, filename='mosaic_preview.png'))
+            embed.set_image(url="attachment://mosaic_preview.png")
+        except Exception:
+            pass
+
+    await interaction.followup.send(embed=embed, files=files)
+
 # --- Image generation via Hugging Face Inference API ---
 HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
 HF_MODEL = "stabilityai/stable-diffusion-xl-base-1.0"
