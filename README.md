@@ -58,7 +58,7 @@ Your all-in-one **Discord entertainment bot** — complete with casino-style gam
 | `/cleartower` | Clear any stuck Tower game |
 | `/recreate` | Generate an AI image from text (powered by Hugging Face 🎨) |
 | `/Ban` | Bans user from server (Includes Unban) |
- `/Timeout` | Timeout user from server (Includes Untimeout |
+ `/Timeout` | Timeout user from server (Includes untimeout) |
 | `/Kick` | Kicks user from server |
 | `/Clip That` | Clips last seconds of a chat into a clean log file |
 | `/Emoji Mosaic` | Convert a image into a emoji mosaic using this server's emojis |
@@ -113,6 +113,7 @@ python main.py
 ```bash
 DISCORD_TOKEN=<your_bot_token>
 GUILD_ID=<your_guild_id>  # optional for faster command sync
+
 
 
 
