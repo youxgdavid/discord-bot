@@ -5,7 +5,8 @@
 A fun and interactive Discord bot with games, utilities, and a balance system.  
 Currently in **development** ⚠️ — please bear with any bugs!  
 
----
+https://discord.com/oauth2/authorize?client_id=1427215701701169264&permissions=8&integration_type=0&scope=bot
+ --
 
 # 🤖 Discord Casino & Game Bot
 
@@ -56,9 +57,12 @@ Your all-in-one **Discord entertainment bot** — complete with casino-style gam
 | `/tower` | Play the Tower casino game |
 | `/cleartower` | Clear any stuck Tower game |
 | `/recreate` | Generate an AI image from text (powered by Hugging Face 🎨) |
-| `/Ban` | Bans user from server |
-| `/Kick` |Kicks user from server |
-| `/Timeout` | time out user for a specific amount of time |
+| `/Ban` | Bans user from server (Includes Unban) |
+ `/Timeout` | Timeout user from server (Includes Untimeout |
+| `/Kick` | Kicks user from server |
+| `/Clip That` | Clips last seconds of a chat into a clean log file |
+| `/Emoji Mosaic` | Convert a image into a emoji mosaic using this server's emojis |
+| `/Resync` | Force  resync slash coommands |
 
 ---
 
@@ -109,6 +113,7 @@ python main.py
 ```bash
 DISCORD_TOKEN=<your_bot_token>
 GUILD_ID=<your_guild_id>  # optional for faster command sync
+
 
 
 
