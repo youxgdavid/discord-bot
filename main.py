@@ -51,6 +51,37 @@ SYNC_COMMANDS = os.getenv("SYNC_COMMANDS", "true").lower() == "true"
 # This helps remove duplicates if you used to register commands globally
 GLOBAL_COMMAND_CLEANUP = os.getenv("GLOBAL_COMMAND_CLEANUP", "false").lower() == "true"
 
+# --- Translation System ---
+from googletrans import Translator
+TRANSLATE_CONFIG_FILE = "translate_configs.json"
+translator = Translator()
+
+def load_translate_configs():
+    try:
+        with open(TRANSLATE_CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+def save_translate_configs(configs):
+    with open(TRANSLATE_CONFIG_FILE, 'w') as f:
+        json.dump(configs, f, indent=2)
+
+# List of common languages for the setup command
+LANGUAGES = {
+    "English": "en",
+    "Spanish": "es",
+    "French": "fr",
+    "German": "de",
+    "Italian": "it",
+    "Portuguese": "pt",
+    "Russian": "ru",
+    "Chinese (Simplified)": "zh-cn",
+    "Japanese": "ja",
+    "Korean": "ko",
+    "Arabic": "ar"
+}
+
 # --- Currency System ---
 CURRENCY_FILE = "player_balances.json"
 STARTING_BALANCE = 10000
@@ -111,6 +142,47 @@ def make_mod_embed(title, color, *, user, moderator, reason=None, extra_fields=N
 
 
 @client.event
+async def on_message(message: discord.Message):
+    # Ignore bot messages to prevent loops
+    if message.author.bot:
+        return
+
+    configs = load_translate_configs()
+    channel_id = str(message.channel.id)
+
+    if channel_id in configs:
+        config = configs[channel_id]
+        target_lang = config["target_lang"]
+
+        # Only translate if there's actual text
+        if not message.content.strip():
+            return
+
+        try:
+            # Detect language first to avoid translating if it's already in the target language
+            loop = asyncio.get_event_loop()
+            detection = await loop.run_in_executor(None, lambda: translator.detect(message.content))
+
+            if detection.lang != target_lang:
+                # Perform translation in a thread to keep the bot responsive
+                translation = await loop.run_in_executor(None, lambda: translator.translate(message.content, dest=target_lang))
+
+                # Send the translation
+                embed = discord.Embed(
+                    description=translation.text,
+                    color=discord.Color.blue()
+                )
+                embed.set_author(name=f"{message.author.display_name} (Translated to {config['target_name']})", icon_url=message.author.display_avatar.url)
+                await message.channel.send(embed=embed)
+
+        except Exception as e:
+            print(f"Translation error: {e}")
+
+    # Process other commands if any (though tree commands don't need this)
+    await client.process_commands(message)
+
+
+@client.event
 async def on_member_join(member: discord.Member):
     try:
         joined_time = member.joined_at.strftime("%Y-%m-%d %H:%M UTC") if member.joined_at else "Just now"
@@ -144,6 +216,40 @@ async def on_member_join(member: discord.Member):
 @tree.command(name="ping", description="Check if the bot is working")
 async def ping(interaction: discord.Interaction):
     await interaction.response.send_message("🏓 Pong! The bot is working.")
+
+# --- Translation Commands ---
+@tree.command(name="translate_setup", description="Setup auto-translation for this channel")
+@app_commands.describe(target_language="The language to translate all messages to", status="Enable or disable auto-translation")
+@app_commands.choices(target_language=[
+    app_commands.Choice(name=name, value=code) for name, code in LANGUAGES.items()
+], status=[
+    app_commands.Choice(name="Enable", value="enable"),
+    app_commands.Choice(name="Disable", value="disable")
+])
+@app_commands.checks.has_permissions(manage_channels=True)
+async def translate_setup(interaction: discord.Interaction, target_language: app_commands.Choice[str], status: app_commands.Choice[str]):
+    configs = load_translate_configs()
+    channel_id = str(interaction.channel_id)
+
+    if status.value == "disable":
+        if channel_id in configs:
+            del configs[channel_id]
+            save_translate_configs(configs)
+            await interaction.response.send_message("✅ Auto-translation disabled for this channel.", ephemeral=True)
+        else:
+            await interaction.response.send_message("❌ Auto-translation was not enabled for this channel.", ephemeral=True)
+        return
+
+    configs[channel_id] = {
+        "target_lang": target_language.value,
+        "target_name": target_language.name
+    }
+    save_translate_configs(configs)
+
+    await interaction.response.send_message(
+        f"✅ Auto-translation enabled! All messages in this channel will be translated to **{target_language.name}**.",
+        ephemeral=True
+    )
 
 # --- /userinfo command ---
 @tree.command(name="userinfo", description="Show information about a user")
