@@ -36,6 +36,7 @@ keep_alive()
 # Discord client and intents
 intents = discord.Intents.default()
 intents.members = True  # Required for member info like roles/join date
+intents.message_content = True # Required for auto-translation to read messages
 
 client = commands.Bot(command_prefix="!", intents=intents)
 tree = client.tree
