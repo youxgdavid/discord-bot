@@ -147,6 +147,9 @@ async def on_message(message: discord.Message):
     if message.author.bot:
         return
 
+    # Process other commands if any (needed for message commands)
+    await client.process_commands(message)
+
     configs = load_translate_configs()
     channel_id = str(message.channel.id)
 
@@ -154,35 +157,30 @@ async def on_message(message: discord.Message):
         config = configs[channel_id]
         target_lang = config["target_lang"]
 
-        # Only translate if there's actual text
         if not message.content.strip():
             return
 
         try:
-            # Detect language first to avoid translating if it's already in the target language
             loop = asyncio.get_event_loop()
+            # Detect language
             detected_lang = await loop.run_in_executor(None, lambda: single_detection(message.content))
-
-            if detected_lang != target_lang:
-                # Perform translation in a thread to keep the bot responsive
+            
+            # Only translate if detected language is different from target language
+            if detected_lang.lower() != target_lang.lower():
                 translation = await loop.run_in_executor(
                     None, 
                     lambda: GoogleTranslator(source='auto', target=target_lang).translate(message.content)
                 )
 
-                # Send the translation
-                embed = discord.Embed(
-                    description=translation,
-                    color=discord.Color.blue()
-                )
-                embed.set_author(name=f"{message.author.display_name} (Translated to {config['target_name']})", icon_url=message.author.display_avatar.url)
-                await message.channel.send(embed=embed)
-
+                if translation:
+                    embed = discord.Embed(
+                        description=translation,
+                        color=discord.Color.blue()
+                    )
+                    embed.set_author(name=f"{message.author.display_name} (Translated to {config['target_name']})", icon_url=message.author.display_avatar.url)
+                    await message.channel.send(embed=embed)
         except Exception as e:
-            print(f"Translation error: {e}")
-
-    # Process other commands if any (though tree commands don't need this)
-    await client.process_commands(message)
+            print(f"Translation error in channel {channel_id}: {e}")
 
 
 @client.event
