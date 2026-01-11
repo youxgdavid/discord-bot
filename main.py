@@ -231,6 +231,7 @@ async def ping(interaction: discord.Interaction):
 ])
 @app_commands.checks.has_permissions(manage_channels=True)
 async def translate_setup(interaction: discord.Interaction, target_language: app_commands.Choice[str], status: app_commands.Choice[str]):
+    await interaction.response.defer(ephemeral=True)
     configs = load_translate_configs()
     channel_id = str(interaction.channel_id)
 
@@ -238,9 +239,9 @@ async def translate_setup(interaction: discord.Interaction, target_language: app
         if channel_id in configs:
             del configs[channel_id]
             save_translate_configs(configs)
-            await interaction.response.send_message("✅ Auto-translation disabled for this channel.", ephemeral=True)
+            await interaction.followup.send("✅ Auto-translation disabled for this channel.")
         else:
-            await interaction.response.send_message("❌ Auto-translation was not enabled for this channel.", ephemeral=True)
+            await interaction.followup.send("❌ Auto-translation was not enabled for this channel.")
         return
 
     configs[channel_id] = {
@@ -249,9 +250,8 @@ async def translate_setup(interaction: discord.Interaction, target_language: app
     }
     save_translate_configs(configs)
 
-    await interaction.response.send_message(
-        f"✅ Auto-translation enabled! All messages in this channel will be translated to **{target_language.name}**.",
-        ephemeral=True
+    await interaction.followup.send(
+        f"✅ Auto-translation enabled! All messages in this channel will be translated to **{target_language.name}**."
     )
 
 # --- /userinfo command ---
