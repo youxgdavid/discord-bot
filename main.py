@@ -52,9 +52,8 @@ SYNC_COMMANDS = os.getenv("SYNC_COMMANDS", "true").lower() == "true"
 GLOBAL_COMMAND_CLEANUP = os.getenv("GLOBAL_COMMAND_CLEANUP", "false").lower() == "true"
 
 # --- Translation System ---
-from googletrans import Translator
+from deep_translator import GoogleTranslator, single_detection
 TRANSLATE_CONFIG_FILE = "translate_configs.json"
-translator = Translator()
 
 def load_translate_configs():
     try:
@@ -161,15 +160,18 @@ async def on_message(message: discord.Message):
         try:
             # Detect language first to avoid translating if it's already in the target language
             loop = asyncio.get_event_loop()
-            detection = await loop.run_in_executor(None, lambda: translator.detect(message.content))
+            detected_lang = await loop.run_in_executor(None, lambda: single_detection(message.content))
 
-            if detection.lang != target_lang:
+            if detected_lang != target_lang:
                 # Perform translation in a thread to keep the bot responsive
-                translation = await loop.run_in_executor(None, lambda: translator.translate(message.content, dest=target_lang))
+                translation = await loop.run_in_executor(
+                    None, 
+                    lambda: GoogleTranslator(source='auto', target=target_lang).translate(message.content)
+                )
 
                 # Send the translation
                 embed = discord.Embed(
-                    description=translation.text,
+                    description=translation,
                     color=discord.Color.blue()
                 )
                 embed.set_author(name=f"{message.author.display_name} (Translated to {config['target_name']})", icon_url=message.author.display_avatar.url)
