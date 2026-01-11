@@ -2137,6 +2137,9 @@ async def on_ready():
     except Exception:
         print("✅ Logged in")
 
+    # Set custom "Now Playing" status
+    await client.change_presence(activity=discord.Game(name="Casino Games | /balance"))
+
     # Optional one-time global cleanup to remove any globally-registered commands
     if GLOBAL_COMMAND_CLEANUP:
         try:
