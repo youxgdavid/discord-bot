@@ -259,9 +259,33 @@ async def on_member_join(member: discord.Member):
         pass
 
 # --- /ping command ---
-@tree.command(name="ping", description="Check if the bot is working")
+@tree.command(name="ping", description="Check the bot's latency and status")
 async def ping(interaction: discord.Interaction):
-    await interaction.response.send_message("🏓 Pong! The bot is working.")
+    latency = round(client.latency * 1000)
+    
+    # Determine color and status based on latency
+    if latency < 100:
+        color = discord.Color.green()
+        status = "Excellent"
+    elif latency < 200:
+        color = discord.Color.gold()
+        status = "Good"
+    else:
+        color = discord.Color.red()
+        status = "High Latency"
+
+    embed = discord.Embed(
+        title="🏓 Pong!",
+        color=color,
+        timestamp=datetime.now(timezone.utc)
+    )
+    
+    embed.add_field(name="📡 Latency", value=f"**{latency}ms**", inline=True)
+    embed.add_field(name="🔌 Status", value=f"**{status}**", inline=True)
+    
+    embed.set_footer(text=f"Requested by {interaction.user}", icon_url=interaction.user.display_avatar.url)
+    
+    await interaction.response.send_message(embed=embed)
 
 # --- Translation Commands ---
 @tree.command(name="translate_setup", description="Setup auto-translation for this channel")
