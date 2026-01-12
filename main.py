@@ -2512,4 +2512,3 @@ if not TOKEN:
     raise RuntimeError("DISCORD_TOKEN environment variable not set!")
 
 client.run(TOKEN.strip())
-
