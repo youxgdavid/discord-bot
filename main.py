@@ -2030,7 +2030,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
     await interaction.response.defer(thinking=True)
 
     # Correct Hugging Face endpoint
-    endpoint = f"https://router.huggingface.co/hf-inference/models/{HF_MODEL}"
+    endpoint = f"https://api-inference.huggingface.co/models/{HF_MODEL}"
 
     headers = {
         "Authorization": f"Bearer {HUGGINGFACE_TOKEN}",
@@ -2121,7 +2121,7 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
         # 1. Generate Text Response
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"https://router.huggingface.co/hf-inference/models/{AI_VOICE_MODEL}",
+                f"https://api-inference.huggingface.co/models/{AI_VOICE_MODEL}",
                 headers=headers,
                 json={"inputs": full_prompt, "parameters": {"max_new_tokens": 150, "temperature": 0.8}},
                 timeout=30
@@ -2512,3 +2512,4 @@ if not TOKEN:
     raise RuntimeError("DISCORD_TOKEN environment variable not set!")
 
 client.run(TOKEN.strip())
+
