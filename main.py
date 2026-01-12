@@ -2085,7 +2085,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
     await interaction.followup.send(embed=embed, file=file)
 
 # --- AI Voices Feature ---
-AI_VOICE_MODEL = "mistralai/Mistral-7B-Instruct-v0.3"
+AI_VOICE_MODEL = "mistralai/Mistral-7B-Instruct-v0.2"
 TTS_MODEL = "facebook/mms-tts-eng"
 
 PERSONAS = {
