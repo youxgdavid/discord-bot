@@ -2084,6 +2084,95 @@ async def recreate(interaction: discord.Interaction, scene: str):
 
     await interaction.followup.send(embed=embed, file=file)
 
+# --- AI Voices Feature ---
+AI_VOICE_MODEL = "mistralai/Mistral-7B-Instruct-v0.3"
+TTS_MODEL = "facebook/mms-tts-eng"
+
+PERSONAS = {
+    "Donald Trump": "You are Donald Trump. Speak in his iconic style: use superlatives like 'tremendous', 'huge', 'disaster', 'fake news'. Mention building walls, winning, and how great you are. Be very confident and slightly repetitive.",
+    "Gordon Ramsay": "You are Gordon Ramsay. You are extremely angry and critical. Use culinary insults like 'idiot sandwich', 'raw', 'disgrace'. Use plenty of exclamation marks and be very aggressive about the quality of whatever is being discussed.",
+    "Snoop Dogg": "You are Snoop Dogg. Speak in a very relaxed, laid-back manner. Use slang like 'fo shizzle', 'my nizzle', 'izzle'. Mention smoking, West Coast vibes, and being 'chill'. Use emojis like 🌿🔥💨.",
+    "Elon Musk": "You are Elon Musk. Talk about Mars, rockets, X (formerly Twitter), and the future. Use technical jargon, mention 'first principles', and be slightly awkward but visionary. Use 'meme' culture references.",
+    "Arnold Schwarzenegger": "You are Arnold Schwarzenegger. Speak like a tough action hero with a thick Austrian accent. Use catchphrases like 'I'll be back', 'Get to the chopper', 'Hasta la vista, baby'. Focus on strength and muscles.",
+    "Morgan Freeman": "You are Morgan Freeman. Speak with a calm, wise, and authoritative voice. Use sophisticated language and narrate the situation as if it's a profound movie moment. Be very soothing."
+}
+
+@tree.command(name="ai_voice", description="Ask a famous person a ridiculous question!")
+@app_commands.describe(
+    character="The famous person you want to hear from",
+    question="The ridiculous question to ask"
+)
+@app_commands.choices(character=[
+    app_commands.Choice(name=name, value=name) for name in PERSONAS.keys()
+])
+async def ai_voice(interaction: discord.Interaction, character: app_commands.Choice[str], question: str):
+    if not HUGGINGFACE_TOKEN:
+        await interaction.response.send_message("❌ Missing HUGGINGFACE_TOKEN environment variable.", ephemeral=True)
+        return
+
+    await interaction.response.defer(thinking=True)
+
+    persona_prompt = PERSONAS[character.value]
+    full_prompt = f"<s>[INST] {persona_prompt}\n\nQuestion: {question} [/INST]</s>"
+
+    headers = {"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"}
+    
+    try:
+        # 1. Generate Text Response
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"https://router.huggingface.co/hf-inference/models/{AI_VOICE_MODEL}",
+                headers=headers,
+                json={"inputs": full_prompt, "parameters": {"max_new_tokens": 150, "temperature": 0.8}},
+                timeout=30
+            ) as resp:
+                if resp.status != 200:
+                    await interaction.followup.send(f"❌ Text generation failed: {resp.status}")
+                    return
+                
+                result = await resp.json()
+                # Mistral returns a list of dicts with 'generated_text'
+                # We need to strip the instruction part
+                ai_response = result[0]['generated_text']
+                if "[/INST]</s>" in ai_response:
+                    ai_response = ai_response.split("[/INST]</s>")[-1].strip()
+                elif "[/INST]" in ai_response:
+                    ai_response = ai_response.split("[/INST]")[-1].strip()
+
+        # 2. Generate Audio (TTS)
+        audio_file = None
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"https://api-inference.huggingface.co/models/{TTS_MODEL}",
+                headers=headers,
+                json={"inputs": ai_response},
+                timeout=30
+            ) as resp:
+                if resp.status == 200:
+                    audio_data = await resp.read()
+                    tmpdir = tempfile.gettempdir()
+                    audio_path = os.path.join(tmpdir, f"voice_{interaction.id}.flac")
+                    with open(audio_path, "wb") as f:
+                        f.write(audio_data)
+                    audio_file = discord.File(audio_path, filename="voice.flac")
+
+        embed = discord.Embed(
+            title=f"🗣️ {character.value} Responds",
+            description=f"**Q:** {question}\n\n**A:** {ai_response}",
+            color=discord.Color.random(),
+            timestamp=datetime.now(timezone.utc)
+        )
+        embed.set_footer(text=f"Requested by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+
+        if audio_file:
+            await interaction.followup.send(embed=embed, file=audio_file)
+        else:
+            await interaction.followup.send(embed=embed)
+
+    except Exception as e:
+        print(f"AI Voice Error: {e}")
+        await interaction.followup.send(f"❌ An error occurred: {str(e)[:100]}")
+
 # --- Force re-sync ---
 @tree.command(name="resync", description="Force resync slash commands")
 @app_commands.guild_only()
