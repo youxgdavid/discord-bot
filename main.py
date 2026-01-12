@@ -2085,7 +2085,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
     await interaction.followup.send(embed=embed, file=file)
 
 # --- AI Voices Feature ---
-AI_VOICE_MODEL = "mistralai/Mistral-7B-Instruct-v0.2"
+AI_VOICE_MODEL = "mistralai/Mistral-7B-Instruct-v0.3"
 TTS_MODEL = "facebook/mms-tts-eng"
 
 PERSONAS = {
@@ -2121,7 +2121,7 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
         # 1. Generate Text Response
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"https://api-inference.huggingface.co/models/{AI_VOICE_MODEL}",
+                f"https://router.huggingface.co/models/{AI_VOICE_MODEL}",
                 headers=headers,
                 json={"inputs": full_prompt, "parameters": {"max_new_tokens": 150, "temperature": 0.8}},
                 timeout=30
@@ -2143,7 +2143,7 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
         audio_file = None
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"https://api-inference.huggingface.co/models/{TTS_MODEL}",
+                f"https://router.huggingface.co/models/{TTS_MODEL}",
                 headers=headers,
                 json={"inputs": ai_response},
                 timeout=30
