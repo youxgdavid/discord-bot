@@ -47,6 +47,7 @@ Your all-in-one **Discord entertainment bot** — complete with casino-style gam
 | Command | Description |
 |---------|-------------|
 | `/ping` | Check bot latency |
+| `/Set_fm` | Displays the currect playing track |
 | `/Translate_Setup` | All messages in a channel will be translated to a language by your choice. (11 different unique languages) |
 | `/userinfo` | Display information about a user |
 | `/balance` | Show your current balance |
@@ -114,6 +115,7 @@ python main.py
 ```bash
 DISCORD_TOKEN=<your_bot_token>
 GUILD_ID=<your_guild_id>  # optional for faster command sync
+
 
 
 
