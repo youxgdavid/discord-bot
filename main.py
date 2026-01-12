@@ -53,7 +53,7 @@ SYNC_COMMANDS = os.getenv("SYNC_COMMANDS", "true").lower() == "true"
 GLOBAL_COMMAND_CLEANUP = os.getenv("GLOBAL_COMMAND_CLEANUP", "false").lower() == "true"
 
 # --- Translation System ---
-from deep_translator import GoogleTranslator, single_detection
+from deep_translator import GoogleTranslator
 TRANSLATE_CONFIG_FILE = "translate_configs.json"
 
 def load_translate_configs():
@@ -142,7 +142,20 @@ def make_mod_embed(title, color, *, user, moderator, reason=None, extra_fields=N
 
 
 @client.event
+async def on_ready():
+    print(f"Logged in as {client.user} (ID: {client.user.id})")
+    print("------")
+    configs = load_translate_configs()
+    if configs:
+        print(f"Monitoring channels for translation: {', '.join(configs.keys())}")
+    else:
+        print("No channels configured for translation.")
+
+@client.event
 async def on_message(message: discord.Message):
+    # Debug: Check if any message is seen
+    # print(f"Message received from {message.author}: {message.content}")
+    
     # Ignore bot messages to prevent loops
     if message.author.bot:
         return
@@ -160,25 +173,26 @@ async def on_message(message: discord.Message):
         if not message.content.strip():
             return
 
+        print(f"Translating message in {channel_id}: {message.content[:50]}...")
+
         try:
             loop = asyncio.get_event_loop()
-            # Detect language
-            detected_lang = await loop.run_in_executor(None, lambda: single_detection(message.content))
             
-            # Only translate if detected language is different from target language
-            if detected_lang.lower() != target_lang.lower():
-                translation = await loop.run_in_executor(
-                    None, 
-                    lambda: GoogleTranslator(source='auto', target=target_lang).translate(message.content)
-                )
+            # Translate from 'auto' to target language
+            translation = await loop.run_in_executor(
+                None, 
+                lambda: GoogleTranslator(source='auto', target=target_lang).translate(message.content)
+            )
 
-                if translation:
-                    embed = discord.Embed(
-                        description=translation,
-                        color=discord.Color.blue()
-                    )
-                    embed.set_author(name=f"{message.author.display_name} (Translated to {config['target_name']})", icon_url=message.author.display_avatar.url)
-                    await message.channel.send(embed=embed)
+            # Only send if translation exists and is different from original message
+            # This handles the case where it's already in the target language
+            if translation and translation.strip().lower() != message.content.strip().lower():
+                embed = discord.Embed(
+                    description=translation,
+                    color=discord.Color.blue()
+                )
+                embed.set_author(name=f"{message.author.display_name} (Translated to {config['target_name']})", icon_url=message.author.display_avatar.url)
+                await message.channel.send(embed=embed)
         except Exception as e:
             print(f"Translation error in channel {channel_id}: {e}")
 
