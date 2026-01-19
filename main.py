@@ -39,7 +39,7 @@ def keep_alive():
 keep_alive()
 
 # Discord client and intents
-BOT_VERSION = "2.2.5-DEBUG"
+BOT_VERSION = "2.2.6-FINAL-FIX"
 intents = discord.Intents.default()
 intents.members = True  # Required for member info like roles/join date
 intents.message_content = True # Required for auto-translation to read messages
@@ -2030,7 +2030,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
 
 # --- AI Voices Feature ---
 AI_VOICE_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
-TTS_MODEL = "espnet/kan-bayashi_ljspeech_vits"
+TTS_MODEL = "facebook/mms-tts-eng"
 
 PERSONAS = {
     "Donald Trump": "You are Donald Trump. Speak in his iconic style: use superlatives like 'tremendous', 'huge', 'disaster'. Mention building walls and winning.",
@@ -2070,14 +2070,16 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
         audio_status = "Audio pending..."
         
         if not ai_response.startswith("Text Error:"):
-            # Clean up text for TTS
             tts_text = ai_response[:250].replace("*", "").replace("#", "").replace("`", "")
             
-            # Retry logic for TTS
             for attempt in range(2):
                 try:
-                    # Specific timeout for TTS
-                    audio_data = await loop.run_in_executor(None, lambda: client_hf.text_to_speech(tts_text, model=TTS_MODEL))
+                    # Using raw post to bypass the StopIteration generator bug in huggingface-hub
+                    def get_audio():
+                        return client_hf.post(json={"inputs": tts_text}, model=TTS_MODEL, task="text-to-speech")
+                    
+                    audio_data = await loop.run_in_executor(None, get_audio)
+                    
                     if audio_data and len(audio_data) > 100:
                         tmp = os.path.join(tempfile.gettempdir(), f"voice_{interaction.id}.wav")
                         with open(tmp, "wb") as f:
@@ -2090,14 +2092,10 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
                 except Exception as e:
                     err_msg = str(e)
                     print(f"DEBUG: TTS attempt {attempt+1} error: {err_msg}")
-                    # Capture actual error for user to report
                     audio_status = f"Audio error: {err_msg[:40]}"
-                    if "503" in err_msg:
-                        audio_status = "Audio failed (Model loading...)"
-                    elif "429" in err_msg:
-                        audio_status = "Audio failed (Rate limited)"
-                    
-                    if attempt == 0: await asyncio.sleep(2) # Wait longer before retry
+                    if "503" in err_msg: audio_status = "Audio failed (Model loading...)"
+                    elif "429" in err_msg: audio_status = "Audio failed (Rate limited)"
+                    if attempt == 0: await asyncio.sleep(2)
 
         embed = discord.Embed(
             title=f"🗣️ {character.value} Responds", 
@@ -2111,19 +2109,13 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
         if audio_file:
             msg = await interaction.followup.send(embed=embed, file=audio_file)
             try:
-                await asyncio.sleep(1) # Wait for Discord
+                await asyncio.sleep(1)
                 msg = await interaction.followup.fetch_message(msg.id)
                 if msg.attachments:
                     view = View()
-                    view.add_item(Button(
-                        label="Download / Listen", 
-                        url=msg.attachments[0].url, 
-                        style=discord.ButtonStyle.link, 
-                        emoji="📥"
-                    ))
+                    view.add_item(Button(label="Download / Listen", url=msg.attachments[0].url, style=discord.ButtonStyle.link, emoji="📥"))
                     await msg.edit(view=view)
-            except Exception as e:
-                print(f"DEBUG: Failed to update button: {e}")
+            except Exception as e: print(f"DEBUG: Button error: {e}")
         else:
             await interaction.followup.send(embed=embed)
             
