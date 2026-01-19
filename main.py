@@ -15,6 +15,7 @@ import tempfile
 import io
 import re
 from dotenv import load_dotenv
+from huggingface_hub import InferenceClient
 
 # Load environment variables
 load_dotenv()
@@ -172,16 +173,7 @@ def make_mod_embed(title, color, *, user, moderator, reason=None, extra_fields=N
     return embed
 
 
-@client.event
-async def on_ready():
-    print(f"Logged in as {client.user} (ID: {client.user.id})")
-    print("------")
-    configs = load_translate_configs()
-    if configs:
-        print(f"Monitoring channels for translation: {', '.join(configs.keys())}")
-    else:
-        print("No channels configured for translation.")
-
+# --- Translation Monitor ---
 @client.event
 async def on_message(message: discord.Message):
     # Debug: Check if any message is seen
@@ -2003,89 +1995,70 @@ async def emojimosaic(
 
 # --- Image generation via Hugging Face Inference API ---
 HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
-HF_MODEL = "stabilityai/stable-diffusion-xl-base-1.0"
+HF_MODEL = "stabilityai/stable-diffusion-3.5-large"
 
 @tree.command(
     name="recreate",
-    description="Generate an image from text using Hugging Face (Stable Diffusion XL)",
+    description="Generate an image from text using Hugging Face (Stable Diffusion)",
 )
 @app_commands.describe(
     scene="Describe what you want to generate, e.g. 'Draw my Minecraft base as an ancient ruin'"
 )
 async def recreate(interaction: discord.Interaction, scene: str):
+    try:
+        await interaction.response.defer(thinking=True)
+    except discord.errors.NotFound:
+        print(f"⚠️ Interaction {interaction.id} timed out before deferring.")
+        return
+
     if not scene or len(scene.strip()) < 3:
-        await interaction.response.send_message(
+        await interaction.followup.send(
             "❌ Please provide a short scene description.",
             ephemeral=True
         )
         return
 
     if not HUGGINGFACE_TOKEN:
-        await interaction.response.send_message(
+        await interaction.followup.send(
             "❌ Missing HUGGINGFACE_TOKEN environment variable.",
             ephemeral=True
         )
         return
 
-    await interaction.response.defer(thinking=True)
-
-    # Correct Hugging Face endpoint
-    endpoint = f"https://api-inference.huggingface.co/models/{HF_MODEL}"
-
-    headers = {
-        "Authorization": f"Bearer {HUGGINGFACE_TOKEN}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "inputs": scene
-    }
-
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                endpoint,
-                headers=headers,
-                json=payload,
-                timeout=aiohttp.ClientTimeout(total=180)
-            ) as resp:
+        client = InferenceClient(api_key=HUGGINGFACE_TOKEN)
+        
+        loop = asyncio.get_event_loop()
+        img_bytes = await loop.run_in_executor(
+            None,
+            lambda: client.text_to_image(scene, model=HF_MODEL)
+        )
 
-                if resp.status != 200:
-                    error_text = await resp.text()
-                    await interaction.followup.send(
-                        f"❌ Generation failed (HTTP {resp.status}):\n```{error_text}```",
-                        ephemeral=True
-                    )
-                    return
+        tmpdir = tempfile.gettempdir()
+        file_path = os.path.join(tmpdir, "recreate.png")
+        with open(file_path, "wb") as f:
+            f.write(img_bytes.read() if hasattr(img_bytes, 'read') else img_bytes)
 
-                img_bytes = await resp.read()
+        file = discord.File(file_path, filename="recreate.png")
+
+        embed = discord.Embed(
+            title="🖼️ Recreated Image",
+            description=f"**Prompt:** {scene}",
+            color=discord.Color.blurple()
+        )
+        embed.set_image(url="attachment://recreate.png")
+
+        await interaction.followup.send(embed=embed, file=file)
 
     except Exception as e:
         await interaction.followup.send(
-            f"❌ Request error: {e}",
+            f"❌ Generation failed: {str(e)[:100]}",
             ephemeral=True
         )
         return
 
-    # Save image temporarily (cross-platform temp dir)
-    tmpdir = tempfile.gettempdir()
-    file_path = os.path.join(tmpdir, "recreate.png")
-    with open(file_path, "wb") as f:
-        f.write(img_bytes)
-
-    file = discord.File(file_path, filename="recreate.png")
-
-    embed = discord.Embed(
-        title="🖼️ Recreated Image",
-        description=f"**Prompt:** {scene}",
-        color=discord.Color.blurple()
-    )
-    embed.set_image(url="attachment://recreate.png")
-
-    await interaction.followup.send(embed=embed, file=file)
-
 # --- AI Voices Feature ---
-AI_VOICE_MODEL = "mistralai/Mistral-7B-Instruct-v0.3"
+AI_VOICE_MODEL = "HuggingFaceH4/zephyr-7b-beta"
 TTS_MODEL = "facebook/mms-tts-eng"
 
 PERSONAS = {
@@ -2106,55 +2079,56 @@ PERSONAS = {
     app_commands.Choice(name=name, value=name) for name in PERSONAS.keys()
 ])
 async def ai_voice(interaction: discord.Interaction, character: app_commands.Choice[str], question: str):
-    if not HUGGINGFACE_TOKEN:
-        await interaction.response.send_message("❌ Missing HUGGINGFACE_TOKEN environment variable.", ephemeral=True)
+    try:
+        await interaction.response.defer(thinking=True)
+    except discord.errors.NotFound:
+        print(f"⚠️ Interaction {interaction.id} timed out before deferring.")
         return
 
-    await interaction.response.defer(thinking=True)
+    if not HUGGINGFACE_TOKEN:
+        await interaction.followup.send("❌ Missing HUGGINGFACE_TOKEN environment variable.", ephemeral=True)
+        return
 
     persona_prompt = PERSONAS[character.value]
-    full_prompt = f"<s>[INST] {persona_prompt}\n\nQuestion: {question} [/INST]</s>"
+    full_prompt = f"{persona_prompt}\n\nQuestion: {question}\n\nAnswer:"
 
-    headers = {"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"}
-    
     try:
-        # 1. Generate Text Response
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"https://router.huggingface.co/models/{AI_VOICE_MODEL}",
-                headers=headers,
-                json={"inputs": full_prompt, "parameters": {"max_new_tokens": 150, "temperature": 0.8}},
-                timeout=30
-            ) as resp:
-                if resp.status != 200:
-                    await interaction.followup.send(f"❌ Text generation failed: {resp.status}")
-                    return
-                
-                result = await resp.json()
-                # Mistral returns a list of dicts with 'generated_text'
-                # We need to strip the instruction part
-                ai_response = result[0]['generated_text']
-                if "[/INST]</s>" in ai_response:
-                    ai_response = ai_response.split("[/INST]</s>")[-1].strip()
-                elif "[/INST]" in ai_response:
-                    ai_response = ai_response.split("[/INST]")[-1].strip()
+        client = InferenceClient(api_key=HUGGINGFACE_TOKEN)
+        
+        loop = asyncio.get_event_loop()
+        
+        def generate_text():
+            try:
+                response = client.text_generation(
+                    full_prompt,
+                    model=AI_VOICE_MODEL,
+                    max_new_tokens=150,
+                    temperature=0.8,
+                    details=False
+                )
+                if isinstance(response, str):
+                    return response.strip()
+                else:
+                    return str(response).strip()
+            except (StopIteration, Exception) as e:
+                print(f"Text generation error: {e}")
+                return "I encountered an error processing that."
+        
+        ai_response = await loop.run_in_executor(None, generate_text)
 
-        # 2. Generate Audio (TTS)
         audio_file = None
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"https://router.huggingface.co/models/{TTS_MODEL}",
-                headers=headers,
-                json={"inputs": ai_response},
-                timeout=30
-            ) as resp:
-                if resp.status == 200:
-                    audio_data = await resp.read()
-                    tmpdir = tempfile.gettempdir()
-                    audio_path = os.path.join(tmpdir, f"voice_{interaction.id}.flac")
-                    with open(audio_path, "wb") as f:
-                        f.write(audio_data)
-                    audio_file = discord.File(audio_path, filename="voice.flac")
+        try:
+            audio_data = await loop.run_in_executor(
+                None,
+                lambda: client.text_to_speech(ai_response, model=TTS_MODEL)
+            )
+            tmpdir = tempfile.gettempdir()
+            audio_path = os.path.join(tmpdir, f"voice_{interaction.id}.flac")
+            with open(audio_path, "wb") as f:
+                f.write(audio_data)
+            audio_file = discord.File(audio_path, filename="voice.flac")
+        except Exception:
+            pass
 
         embed = discord.Embed(
             title=f"🗣️ {character.value} Responds",
@@ -2468,15 +2442,19 @@ async def unban_user(
 
 @client.event
 async def on_ready():
-    try:
-        print(f"✅ Logged in as {client.user} (ID: {client.user.id})")
-    except Exception:
-        print("✅ Logged in")
+    print(f"✅ Logged in as {client.user} (ID: {client.user.id})")
+    
+    # Load configs
+    configs = load_translate_configs()
+    if configs:
+        print(f"Monitoring channels for translation: {', '.join(configs.keys())}")
+    else:
+        print("No channels configured for translation.")
 
     # Set custom "Now Playing" status
     await client.change_presence(activity=discord.Game(name="Casino Games | /balance"))
 
-    # Optional one-time global cleanup to remove any globally-registered commands
+    # Optional one-time global cleanup
     if GLOBAL_COMMAND_CLEANUP:
         try:
             print("🧹 Clearing GLOBAL application commands...")
@@ -2486,24 +2464,44 @@ async def on_ready():
         except Exception as e:
             print(f"❌ Failed to clear global commands: {e}")
 
-    # Conditionally sync guild commands to avoid duplicate syncing across multiple instances
+    # Conditionally sync guild commands
     if SYNC_COMMANDS:
         try:
-            await tree.sync()
-            print("⚡ Global slash commands synced (propagation can take up to ~1 hour)")
-            # Temporary dual-sync: also sync test guild for instant updates
+            # Sync to the specific test guild for instant updates
             await tree.sync(guild=GUILD_OBJECT)
-            print(f"⚡ Guild {GUILD_ID} slash commands synced instantly for testing")
+            print(f"⚡ Guild {GUILD_ID} slash commands synced instantly")
+            
+            # Optional: Also sync globally if needed, but beware of propagation time
+            # await tree.sync()
+            # print("⚡ Global slash commands synced")
         except Exception as e:
             print(f"❌ Sync failed: {e}")
     else:
-        print("⏭️ Skipping guild sync because SYNC_COMMANDS=false")
+        print("⏭️ Skipping sync because SYNC_COMMANDS=false")
         try:
-            # Fetch existing guild commands so the bot can route interactions without altering remote state
             await tree.fetch_commands()
-            print("🔎 Fetched existing global commands for routing.")
+            print("🔎 Fetched existing commands for routing.")
         except Exception as e:
-            print(f"❌ Failed to fetch guild commands: {e}")
+            print(f"❌ Failed to fetch commands: {e}")
+
+# Global Slash Command Error Handler
+@tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.CommandInvokeError):
+        # 10062 is "Unknown Interaction"
+        if "10062" in str(error):
+            print(f"⚠️ Interaction {interaction.id} timed out. (Normal on Render Free tier wake-up)")
+            return
+    
+    print(f"❌ Slash Command Error: {error}")
+    try:
+        error_msg = f"❌ An error occurred: {str(error)[:100]}"
+        if not interaction.response.is_done():
+            await interaction.response.send_message(error_msg, ephemeral=True)
+        else:
+            await interaction.followup.send(error_msg, ephemeral=True)
+    except Exception:
+        pass
 
 
 TOKEN = os.getenv("DISCORD_TOKEN")
