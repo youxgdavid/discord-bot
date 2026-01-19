@@ -2007,8 +2007,7 @@ HF_MODEL = "stabilityai/stable-diffusion-3.5-large"
 async def recreate(interaction: discord.Interaction, scene: str):
     try:
         await interaction.response.defer(thinking=True)
-    except discord.errors.NotFound:
-        print(f"⚠️ Interaction {interaction.id} timed out before deferring.")
+    except:
         return
 
     if not scene or len(scene.strip()) < 3:
@@ -2058,7 +2057,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
         return
 
 # --- AI Voices Feature ---
-AI_VOICE_MODEL = "HuggingFaceH4/zephyr-7b-beta"
+AI_VOICE_MODEL = "mistralai/Mistral-7B-Instruct-v0.2"
 TTS_MODEL = "facebook/mms-tts-eng"
 
 PERSONAS = {
@@ -2081,8 +2080,7 @@ PERSONAS = {
 async def ai_voice(interaction: discord.Interaction, character: app_commands.Choice[str], question: str):
     try:
         await interaction.response.defer(thinking=True)
-    except discord.errors.NotFound:
-        print(f"⚠️ Interaction {interaction.id} timed out before deferring.")
+    except:
         return
 
     if not HUGGINGFACE_TOKEN:
@@ -2442,6 +2440,7 @@ async def unban_user(
 
 @client.event
 async def on_ready():
+    print("✅ VERSION 2.1 - UPDATED INTERACTION HANDLING")
     print(f"✅ Logged in as {client.user} (ID: {client.user.id})")
     
     # Load configs
