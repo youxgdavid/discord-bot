@@ -2063,7 +2063,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
         return
 
 # --- AI Voices Feature ---
-AI_VOICE_MODEL = "HuggingFaceH4/zephyr-7b-beta"
+AI_VOICE_MODEL = "mistralai/Mistral-7B-Instruct-v0.1"
 TTS_MODEL = "facebook/mms-tts-eng"
 
 PERSONAS = {
