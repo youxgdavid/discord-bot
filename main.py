@@ -39,7 +39,7 @@ def keep_alive():
 keep_alive()
 
 # Discord client and intents
-BOT_VERSION = "2.2.4-STABLE"
+BOT_VERSION = "2.2.5-DEBUG"
 intents = discord.Intents.default()
 intents.members = True  # Required for member info like roles/join date
 intents.message_content = True # Required for auto-translation to read messages
@@ -2030,7 +2030,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
 
 # --- AI Voices Feature ---
 AI_VOICE_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
-TTS_MODEL = "facebook/fastspeech2-en-ljspeech"
+TTS_MODEL = "espnet/kan-bayashi_ljspeech_vits"
 
 PERSONAS = {
     "Donald Trump": "You are Donald Trump. Speak in his iconic style: use superlatives like 'tremendous', 'huge', 'disaster'. Mention building walls and winning.",
@@ -2067,15 +2067,16 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
         ai_response = await loop.run_in_executor(None, generate_text)
         
         audio_file = None
-        audio_status = "Audio failed (Generation error)"
+        audio_status = "Audio pending..."
         
         if not ai_response.startswith("Text Error:"):
-            # Clean up text for TTS (remove some markdown that can confuse older TTS models)
+            # Clean up text for TTS
             tts_text = ai_response[:250].replace("*", "").replace("#", "").replace("`", "")
             
             # Retry logic for TTS
             for attempt in range(2):
                 try:
+                    # Specific timeout for TTS
                     audio_data = await loop.run_in_executor(None, lambda: client_hf.text_to_speech(tts_text, model=TTS_MODEL))
                     if audio_data and len(audio_data) > 100:
                         tmp = os.path.join(tempfile.gettempdir(), f"voice_{interaction.id}.wav")
@@ -2085,11 +2086,18 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
                         audio_status = "Audio ready!"
                         break
                     else:
-                        audio_status = "Audio failed (Empty response)"
+                        audio_status = "Audio failed (Empty result)"
                 except Exception as e:
-                    print(f"DEBUG: TTS attempt {attempt+1} error: {e}")
-                    audio_status = f"Audio failed (API Error)"
-                    if attempt == 0: await asyncio.sleep(1) # Wait before retry
+                    err_msg = str(e)
+                    print(f"DEBUG: TTS attempt {attempt+1} error: {err_msg}")
+                    # Capture actual error for user to report
+                    audio_status = f"Audio error: {err_msg[:40]}"
+                    if "503" in err_msg:
+                        audio_status = "Audio failed (Model loading...)"
+                    elif "429" in err_msg:
+                        audio_status = "Audio failed (Rate limited)"
+                    
+                    if attempt == 0: await asyncio.sleep(2) # Wait longer before retry
 
         embed = discord.Embed(
             title=f"🗣️ {character.value} Responds", 
@@ -2102,9 +2110,8 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
 
         if audio_file:
             msg = await interaction.followup.send(embed=embed, file=audio_file)
-            # Ensure we have the attachment URL by re-fetching the message
             try:
-                await asyncio.sleep(0.5) # Give Discord a moment to process the file
+                await asyncio.sleep(1) # Wait for Discord
                 msg = await interaction.followup.fetch_message(msg.id)
                 if msg.attachments:
                     view = View()
