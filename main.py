@@ -2122,10 +2122,12 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
         audio_file = None
         if not ai_response.startswith("Text Error:"):
             try:
-                print(f"DEBUG: Generating TTS for: {ai_response[:30]}...")
+                # Use a slightly shorter version for TTS to ensure it doesn't time out
+                tts_text = ai_response[:300]
+                print(f"DEBUG: Generating TTS for: {tts_text[:30]}...")
                 audio_data = await loop.run_in_executor(
                     None,
-                    lambda: client.text_to_speech(ai_response, model=TTS_MODEL)
+                    lambda: client.text_to_speech(tts_text, model=TTS_MODEL)
                 )
                 tmpdir = tempfile.gettempdir()
                 audio_path = os.path.join(tmpdir, f"voice_{interaction.id}.flac")
