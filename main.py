@@ -2057,7 +2057,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
         return
 
 # --- AI Voices Feature ---
-AI_VOICE_MODEL = "microsoft/Phi-3-mini-4k-instruct"
+AI_VOICE_MODEL = "meta-llama/Llama-3.2-11B-Vision-Instruct"
 TTS_MODEL = "facebook/mms-tts-eng"
 
 PERSONAS = {
@@ -2097,6 +2097,7 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
         
         def generate_text():
             try:
+                print(f"DEBUG: Generating text for {character.value} using {AI_VOICE_MODEL}")
                 response = client.text_generation(
                     full_prompt,
                     model=AI_VOICE_MODEL,
@@ -2104,29 +2105,33 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
                     temperature=0.7,
                     details=False
                 )
+                print(f"DEBUG: Response type: {type(response)}")
                 if isinstance(response, str):
                     return response.strip()
                 else:
                     return str(response).strip()
             except Exception as e:
-                print(f"Text generation error: {e}")
-                return f"Error: {str(e)[:100]}"
+                print(f"DEBUG: Text generation error detail: {str(e)}")
+                return f"Text Error: {str(e)}"
         
         ai_response = await loop.run_in_executor(None, generate_text)
 
         audio_file = None
-        try:
-            audio_data = await loop.run_in_executor(
-                None,
-                lambda: client.text_to_speech(ai_response, model=TTS_MODEL)
-            )
-            tmpdir = tempfile.gettempdir()
-            audio_path = os.path.join(tmpdir, f"voice_{interaction.id}.flac")
-            with open(audio_path, "wb") as f:
-                f.write(audio_data)
-            audio_file = discord.File(audio_path, filename="voice.flac")
-        except Exception:
-            pass
+        if not ai_response.startswith("Text Error:"):
+            try:
+                print(f"DEBUG: Generating TTS for: {ai_response[:30]}...")
+                audio_data = await loop.run_in_executor(
+                    None,
+                    lambda: client.text_to_speech(ai_response, model=TTS_MODEL)
+                )
+                tmpdir = tempfile.gettempdir()
+                audio_path = os.path.join(tmpdir, f"voice_{interaction.id}.flac")
+                with open(audio_path, "wb") as f:
+                    f.write(audio_data)
+                audio_file = discord.File(audio_path, filename="voice.flac")
+                print("DEBUG: Audio file created successfully")
+            except Exception as e:
+                print(f"DEBUG: TTS error detail: {str(e)}")
 
         embed = discord.Embed(
             title=f"🗣️ {character.value} Responds",
