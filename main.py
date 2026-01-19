@@ -2104,10 +2104,15 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
                     full_prompt,
                     model=AI_VOICE_MODEL,
                     max_new_tokens=150,
-                    temperature=0.8
+                    temperature=0.8,
+                    details=False
                 )
-                return response if isinstance(response, str) else str(response)
-            except StopIteration:
+                if isinstance(response, str):
+                    return response.strip()
+                else:
+                    return str(response).strip()
+            except (StopIteration, Exception) as e:
+                print(f"Text generation error: {e}")
                 return "I encountered an error processing that."
         
         ai_response = await loop.run_in_executor(None, generate_text)
