@@ -2098,18 +2098,21 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
         def generate_text():
             try:
                 print(f"DEBUG: Generating text for {character.value} using {AI_VOICE_MODEL}")
-                response = client.text_generation(
-                    full_prompt,
+                messages = [
+                    {"role": "system", "content": persona_prompt},
+                    {"role": "user", "content": question}
+                ]
+                
+                response = client.chat_completion(
+                    messages=messages,
                     model=AI_VOICE_MODEL,
-                    max_new_tokens=150,
-                    temperature=0.7,
-                    details=False
+                    max_tokens=150,
+                    temperature=0.7
                 )
+                
                 print(f"DEBUG: Response type: {type(response)}")
-                if isinstance(response, str):
-                    return response.strip()
-                else:
-                    return str(response).strip()
+                content = response.choices[0].message.content
+                return content.strip()
             except Exception as e:
                 print(f"DEBUG: Text generation error detail: {str(e)}")
                 return f"Text Error: {str(e)}"
