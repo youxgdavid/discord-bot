@@ -2063,7 +2063,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
         return
 
 # --- AI Voices Feature ---
-AI_VOICE_MODEL = "mistralai/Mistral-7B-Instruct-v0.1"
+AI_VOICE_MODEL = "meta-llama/Llama-2-7b-chat-hf"
 TTS_MODEL = "facebook/mms-tts-eng"
 
 PERSONAS = {
@@ -2097,15 +2097,20 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
         client = InferenceClient(api_key=HUGGINGFACE_TOKEN)
         
         loop = asyncio.get_event_loop()
-        ai_response = await loop.run_in_executor(
-            None,
-            lambda: client.text_generation(
-                full_prompt,
-                model=AI_VOICE_MODEL,
-                max_new_tokens=150,
-                temperature=0.8
-            )
-        )
+        
+        def generate_text():
+            try:
+                response = client.text_generation(
+                    full_prompt,
+                    model=AI_VOICE_MODEL,
+                    max_new_tokens=150,
+                    temperature=0.8
+                )
+                return response if isinstance(response, str) else str(response)
+            except StopIteration:
+                return "I encountered an error processing that."
+        
+        ai_response = await loop.run_in_executor(None, generate_text)
 
         audio_file = None
         try:
