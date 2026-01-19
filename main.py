@@ -15,7 +15,6 @@ import tempfile
 import io
 import re
 from dotenv import load_dotenv
-from huggingface_hub import InferenceClient
 
 # Load environment variables
 load_dotenv()
@@ -2004,11 +2003,11 @@ async def emojimosaic(
 
 # --- Image generation via Hugging Face Inference API ---
 HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
-HF_MODEL = "stabilityai/stable-diffusion-3.5-large"
+HF_MODEL = "stabilityai/stable-diffusion-xl-base-1.0"
 
 @tree.command(
     name="recreate",
-    description="Generate an image from text using Hugging Face (Stable Diffusion)",
+    description="Generate an image from text using Hugging Face (Stable Diffusion XL)",
 )
 @app_commands.describe(
     scene="Describe what you want to generate, e.g. 'Draw my Minecraft base as an ancient ruin'"
@@ -2030,40 +2029,63 @@ async def recreate(interaction: discord.Interaction, scene: str):
 
     await interaction.response.defer(thinking=True)
 
+    # Correct Hugging Face endpoint
+    endpoint = f"https://api-inference.huggingface.co/models/{HF_MODEL}"
+
+    headers = {
+        "Authorization": f"Bearer {HUGGINGFACE_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "inputs": scene
+    }
+
     try:
-        client = InferenceClient(api_key=HUGGINGFACE_TOKEN)
-        
-        loop = asyncio.get_event_loop()
-        img_bytes = await loop.run_in_executor(
-            None,
-            lambda: client.text_to_image(scene, model=HF_MODEL)
-        )
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                endpoint,
+                headers=headers,
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=180)
+            ) as resp:
 
-        tmpdir = tempfile.gettempdir()
-        file_path = os.path.join(tmpdir, "recreate.png")
-        with open(file_path, "wb") as f:
-            f.write(img_bytes.read() if hasattr(img_bytes, 'read') else img_bytes)
+                if resp.status != 200:
+                    error_text = await resp.text()
+                    await interaction.followup.send(
+                        f"❌ Generation failed (HTTP {resp.status}):\n```{error_text}```",
+                        ephemeral=True
+                    )
+                    return
 
-        file = discord.File(file_path, filename="recreate.png")
-
-        embed = discord.Embed(
-            title="🖼️ Recreated Image",
-            description=f"**Prompt:** {scene}",
-            color=discord.Color.blurple()
-        )
-        embed.set_image(url="attachment://recreate.png")
-
-        await interaction.followup.send(embed=embed, file=file)
+                img_bytes = await resp.read()
 
     except Exception as e:
         await interaction.followup.send(
-            f"❌ Generation failed: {str(e)[:100]}",
+            f"❌ Request error: {e}",
             ephemeral=True
         )
         return
 
+    # Save image temporarily (cross-platform temp dir)
+    tmpdir = tempfile.gettempdir()
+    file_path = os.path.join(tmpdir, "recreate.png")
+    with open(file_path, "wb") as f:
+        f.write(img_bytes)
+
+    file = discord.File(file_path, filename="recreate.png")
+
+    embed = discord.Embed(
+        title="🖼️ Recreated Image",
+        description=f"**Prompt:** {scene}",
+        color=discord.Color.blurple()
+    )
+    embed.set_image(url="attachment://recreate.png")
+
+    await interaction.followup.send(embed=embed, file=file)
+
 # --- AI Voices Feature ---
-AI_VOICE_MODEL = "meta-llama/Llama-2-7b-chat-hf"
+AI_VOICE_MODEL = "mistralai/Mistral-7B-Instruct-v0.3"
 TTS_MODEL = "facebook/mms-tts-eng"
 
 PERSONAS = {
@@ -2091,45 +2113,48 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
     await interaction.response.defer(thinking=True)
 
     persona_prompt = PERSONAS[character.value]
-    full_prompt = f"{persona_prompt}\n\nQuestion: {question}\n\nAnswer:"
+    full_prompt = f"<s>[INST] {persona_prompt}\n\nQuestion: {question} [/INST]</s>"
 
+    headers = {"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"}
+    
     try:
-        client = InferenceClient(api_key=HUGGINGFACE_TOKEN)
-        
-        loop = asyncio.get_event_loop()
-        
-        def generate_text():
-            try:
-                response = client.text_generation(
-                    full_prompt,
-                    model=AI_VOICE_MODEL,
-                    max_new_tokens=150,
-                    temperature=0.8,
-                    details=False
-                )
-                if isinstance(response, str):
-                    return response.strip()
-                else:
-                    return str(response).strip()
-            except (StopIteration, Exception) as e:
-                print(f"Text generation error: {e}")
-                return "I encountered an error processing that."
-        
-        ai_response = await loop.run_in_executor(None, generate_text)
+        # 1. Generate Text Response
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"https://router.huggingface.co/models/{AI_VOICE_MODEL}",
+                headers=headers,
+                json={"inputs": full_prompt, "parameters": {"max_new_tokens": 150, "temperature": 0.8}},
+                timeout=30
+            ) as resp:
+                if resp.status != 200:
+                    await interaction.followup.send(f"❌ Text generation failed: {resp.status}")
+                    return
+                
+                result = await resp.json()
+                # Mistral returns a list of dicts with 'generated_text'
+                # We need to strip the instruction part
+                ai_response = result[0]['generated_text']
+                if "[/INST]</s>" in ai_response:
+                    ai_response = ai_response.split("[/INST]</s>")[-1].strip()
+                elif "[/INST]" in ai_response:
+                    ai_response = ai_response.split("[/INST]")[-1].strip()
 
+        # 2. Generate Audio (TTS)
         audio_file = None
-        try:
-            audio_data = await loop.run_in_executor(
-                None,
-                lambda: client.text_to_speech(ai_response, model=TTS_MODEL)
-            )
-            tmpdir = tempfile.gettempdir()
-            audio_path = os.path.join(tmpdir, f"voice_{interaction.id}.flac")
-            with open(audio_path, "wb") as f:
-                f.write(audio_data)
-            audio_file = discord.File(audio_path, filename="voice.flac")
-        except Exception:
-            pass
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"https://router.huggingface.co/models/{TTS_MODEL}",
+                headers=headers,
+                json={"inputs": ai_response},
+                timeout=30
+            ) as resp:
+                if resp.status == 200:
+                    audio_data = await resp.read()
+                    tmpdir = tempfile.gettempdir()
+                    audio_path = os.path.join(tmpdir, f"voice_{interaction.id}.flac")
+                    with open(audio_path, "wb") as f:
+                        f.write(audio_data)
+                    audio_file = discord.File(audio_path, filename="voice.flac")
 
         embed = discord.Embed(
             title=f"🗣️ {character.value} Responds",
