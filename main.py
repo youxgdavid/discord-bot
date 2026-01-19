@@ -2057,7 +2057,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
         return
 
 # --- AI Voices Feature ---
-AI_VOICE_MODEL = "mistralai/Mistral-7B-Instruct-v0.2"
+AI_VOICE_MODEL = "microsoft/Phi-3-mini-4k-instruct"
 TTS_MODEL = "facebook/mms-tts-eng"
 
 PERSONAS = {
@@ -2091,7 +2091,7 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
     full_prompt = f"{persona_prompt}\n\nQuestion: {question}\n\nAnswer:"
 
     try:
-        client = InferenceClient(api_key=HUGGINGFACE_TOKEN)
+        client = InferenceClient(token=HUGGINGFACE_TOKEN)
         
         loop = asyncio.get_event_loop()
         
@@ -2101,16 +2101,16 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
                     full_prompt,
                     model=AI_VOICE_MODEL,
                     max_new_tokens=150,
-                    temperature=0.8,
+                    temperature=0.7,
                     details=False
                 )
                 if isinstance(response, str):
                     return response.strip()
                 else:
                     return str(response).strip()
-            except (StopIteration, Exception) as e:
+            except Exception as e:
                 print(f"Text generation error: {e}")
-                return "I encountered an error processing that."
+                return f"Error: {str(e)[:100]}"
         
         ai_response = await loop.run_in_executor(None, generate_text)
 
@@ -2134,7 +2134,7 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
             color=discord.Color.random(),
             timestamp=datetime.now(timezone.utc)
         )
-        embed.set_footer(text=f"Requested by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+        embed.set_footer(text=f"Requested by {interaction.user.display_name} • Click the file below to hear the voice!", icon_url=interaction.user.display_avatar.url)
 
         if audio_file:
             await interaction.followup.send(embed=embed, file=audio_file)
