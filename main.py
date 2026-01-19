@@ -2030,7 +2030,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
 
 # --- AI Voices Feature ---
 AI_VOICE_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
-TTS_MODEL = "facebook/fastspeech2-en-ljspeech"
+TTS_MODEL = "facebook/mms-tts-eng"
 
 PERSONAS = {
     "Donald Trump": "You are Donald Trump. Speak in his iconic style: use superlatives like 'tremendous', 'huge', 'disaster'. Mention building walls and winning.",
