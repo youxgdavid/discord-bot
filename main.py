@@ -39,7 +39,7 @@ def keep_alive():
 keep_alive()
 
 # Discord client and intents
-BOT_VERSION = "2.2.3-AUDIOFIX"
+BOT_VERSION = "2.2.4-STABLE"
 intents = discord.Intents.default()
 intents.members = True  # Required for member info like roles/join date
 intents.message_content = True # Required for auto-translation to read messages
@@ -2030,7 +2030,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
 
 # --- AI Voices Feature ---
 AI_VOICE_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
-TTS_MODEL = "facebook/mms-tts-eng"
+TTS_MODEL = "facebook/fastspeech2-en-ljspeech"
 
 PERSONAS = {
     "Donald Trump": "You are Donald Trump. Speak in his iconic style: use superlatives like 'tremendous', 'huge', 'disaster'. Mention building walls and winning.",
@@ -2054,7 +2054,7 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
     
     persona_prompt = PERSONAS[character.value]
     try:
-        client_hf = InferenceClient(api_key=HUGGINGFACE_TOKEN)
+        client_hf = InferenceClient(token=HUGGINGFACE_TOKEN)
         loop = asyncio.get_event_loop()
         
         def generate_text():
@@ -2070,22 +2070,26 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
         audio_status = "Audio failed (Generation error)"
         
         if not ai_response.startswith("Text Error:"):
-            try:
-                # Use a smaller chunk of text for TTS to ensure speed and success
-                tts_text = ai_response[:250]
-                audio_data = await loop.run_in_executor(None, lambda: client_hf.text_to_speech(tts_text, model=TTS_MODEL))
-                
-                if audio_data and len(audio_data) > 100:
-                    tmp = os.path.join(tempfile.gettempdir(), f"voice_{interaction.id}.wav")
-                    with open(tmp, "wb") as f:
-                        f.write(audio_data)
-                    audio_file = discord.File(tmp, filename="voice.wav")
-                    audio_status = "Audio ready!"
-                else:
-                    audio_status = "Audio failed (Empty data)"
-            except Exception as e: 
-                print(f"DEBUG: TTS error: {e}")
-                audio_status = f"Audio failed (API Error)"
+            # Clean up text for TTS (remove some markdown that can confuse older TTS models)
+            tts_text = ai_response[:250].replace("*", "").replace("#", "").replace("`", "")
+            
+            # Retry logic for TTS
+            for attempt in range(2):
+                try:
+                    audio_data = await loop.run_in_executor(None, lambda: client_hf.text_to_speech(tts_text, model=TTS_MODEL))
+                    if audio_data and len(audio_data) > 100:
+                        tmp = os.path.join(tempfile.gettempdir(), f"voice_{interaction.id}.wav")
+                        with open(tmp, "wb") as f:
+                            f.write(audio_data)
+                        audio_file = discord.File(tmp, filename="voice.wav")
+                        audio_status = "Audio ready!"
+                        break
+                    else:
+                        audio_status = "Audio failed (Empty response)"
+                except Exception as e:
+                    print(f"DEBUG: TTS attempt {attempt+1} error: {e}")
+                    audio_status = f"Audio failed (API Error)"
+                    if attempt == 0: await asyncio.sleep(1) # Wait before retry
 
         embed = discord.Embed(
             title=f"🗣️ {character.value} Responds", 
@@ -2097,10 +2101,12 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
         embed.set_footer(text=footer, icon_url=interaction.user.display_avatar.url)
 
         if audio_file:
-            # We must use the message object returned by followup.send to get attachment URLs
             msg = await interaction.followup.send(embed=embed, file=audio_file)
-            if msg and msg.attachments:
-                try:
+            # Ensure we have the attachment URL by re-fetching the message
+            try:
+                await asyncio.sleep(0.5) # Give Discord a moment to process the file
+                msg = await interaction.followup.fetch_message(msg.id)
+                if msg.attachments:
                     view = View()
                     view.add_item(Button(
                         label="Download / Listen", 
@@ -2109,8 +2115,8 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
                         emoji="📥"
                     ))
                     await msg.edit(view=view)
-                except Exception as e:
-                    print(f"DEBUG: Button error: {e}")
+            except Exception as e:
+                print(f"DEBUG: Failed to update button: {e}")
         else:
             await interaction.followup.send(embed=embed)
             
