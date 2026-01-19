@@ -2057,7 +2057,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
         return
 
 # --- AI Voices Feature ---
-AI_VOICE_MODEL = "meta-llama/Llama-3.2-11B-Vision-Instruct"
+AI_VOICE_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
 TTS_MODEL = "facebook/mms-tts-eng"
 
 PERSONAS = {
