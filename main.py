@@ -39,7 +39,7 @@ def keep_alive():
 keep_alive()
 
 # Discord client and intents
-BOT_VERSION = "2.2.7-NATIVE-API"
+BOT_VERSION = "2.2.8-MMS-FIX"
 intents = discord.Intents.default()
 intents.members = True  # Required for member info like roles/join date
 intents.message_content = True # Required for auto-translation to read messages
