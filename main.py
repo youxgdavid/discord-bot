@@ -39,7 +39,7 @@ def keep_alive():
 keep_alive()
 
 # Discord client and intents
-BOT_VERSION = "2.2.2-UIFIX"
+BOT_VERSION = "2.2.3-AUDIOFIX"
 intents = discord.Intents.default()
 intents.members = True  # Required for member info like roles/join date
 intents.message_content = True # Required for auto-translation to read messages
@@ -2030,7 +2030,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
 
 # --- AI Voices Feature ---
 AI_VOICE_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
-TTS_MODEL = "facebook/fastspeech2-en-ljspeech"
+TTS_MODEL = "facebook/mms-tts-eng"
 
 PERSONAS = {
     "Donald Trump": "You are Donald Trump. Speak in his iconic style: use superlatives like 'tremendous', 'huge', 'disaster'. Mention building walls and winning.",
@@ -2054,7 +2054,7 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
     
     persona_prompt = PERSONAS[character.value]
     try:
-        client_hf = InferenceClient(token=HUGGINGFACE_TOKEN)
+        client_hf = InferenceClient(api_key=HUGGINGFACE_TOKEN)
         loop = asyncio.get_event_loop()
         
         def generate_text():
@@ -2065,21 +2065,27 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
             except Exception as e: return f"Text Error: {str(e)}"
         
         ai_response = await loop.run_in_executor(None, generate_text)
+        
         audio_file = None
-        audio_success = False
+        audio_status = "Audio failed (Generation error)"
         
         if not ai_response.startswith("Text Error:"):
             try:
-                tts_text = ai_response[:300]
+                # Use a smaller chunk of text for TTS to ensure speed and success
+                tts_text = ai_response[:250]
                 audio_data = await loop.run_in_executor(None, lambda: client_hf.text_to_speech(tts_text, model=TTS_MODEL))
+                
                 if audio_data and len(audio_data) > 100:
-                    tmp = os.path.join(tempfile.gettempdir(), f"voice_{interaction.id}.mp3")
-                    with open(tmp, "wb") as f: f.write(audio_data)
-                    audio_file = discord.File(tmp, filename="voice.mp3")
-                    audio_success = True
+                    tmp = os.path.join(tempfile.gettempdir(), f"voice_{interaction.id}.wav")
+                    with open(tmp, "wb") as f:
+                        f.write(audio_data)
+                    audio_file = discord.File(tmp, filename="voice.wav")
+                    audio_status = "Audio ready!"
+                else:
+                    audio_status = "Audio failed (Empty data)"
             except Exception as e: 
                 print(f"DEBUG: TTS error: {e}")
-                audio_success = False
+                audio_status = f"Audio failed (API Error)"
 
         embed = discord.Embed(
             title=f"🗣️ {character.value} Responds", 
@@ -2087,20 +2093,29 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
             color=discord.Color.random(), 
             timestamp=datetime.now(timezone.utc)
         )
-        footer = f"Requested by {interaction.user.display_name} • {'Audio ready!' if audio_success else 'Audio failed.'}"
+        footer = f"Requested by {interaction.user.display_name} • {audio_status}"
         embed.set_footer(text=footer, icon_url=interaction.user.display_avatar.url)
 
         if audio_file:
+            # We must use the message object returned by followup.send to get attachment URLs
             msg = await interaction.followup.send(embed=embed, file=audio_file)
             if msg and msg.attachments:
                 try:
                     view = View()
-                    view.add_item(Button(label="Download / Listen", url=msg.attachments[0].url, style=discord.ButtonStyle.link, emoji="📥"))
+                    view.add_item(Button(
+                        label="Download / Listen", 
+                        url=msg.attachments[0].url, 
+                        style=discord.ButtonStyle.link, 
+                        emoji="📥"
+                    ))
                     await msg.edit(view=view)
-                except: pass
+                except Exception as e:
+                    print(f"DEBUG: Button error: {e}")
         else:
             await interaction.followup.send(embed=embed)
+            
     except Exception as e:
+        print(f"DEBUG: Global error: {e}")
         await interaction.followup.send(f"❌ Error: {str(e)[:100]}")
 
 # --- Force re-sync ---
