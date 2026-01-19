@@ -39,6 +39,7 @@ def keep_alive():
 keep_alive()
 
 # Discord client and intents
+BOT_VERSION = "2.2.2-UIFIX"
 intents = discord.Intents.default()
 intents.members = True  # Required for member info like roles/join date
 intents.message_content = True # Required for auto-translation to read messages
@@ -173,7 +174,18 @@ def make_mod_embed(title, color, *, user, moderator, reason=None, extra_fields=N
     return embed
 
 
-# --- Translation Monitor ---
+@client.event
+async def on_ready():
+    print(f"✅ VERSION {BOT_VERSION} active")
+    print(f"✅ Logged in as {client.user}")
+    if SYNC_COMMANDS:
+        try:
+            await tree.sync(guild=GUILD_OBJECT)
+            print("⚡ Guild commands synced")
+        except Exception as e:
+            print(f"❌ Sync failed: {e}")
+    await client.change_presence(activity=discord.Game(name="Casino Games | /balance"))
+
 @client.event
 async def on_message(message: discord.Message):
     # Debug: Check if any message is seen
@@ -1996,164 +2008,100 @@ async def emojimosaic(
 # --- Image generation via Hugging Face Inference API ---
 HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
 HF_MODEL = "stabilityai/stable-diffusion-3.5-large"
-
-@tree.command(
-    name="recreate",
-    description="Generate an image from text using Hugging Face (Stable Diffusion)",
-)
-@app_commands.describe(
-    scene="Describe what you want to generate, e.g. 'Draw my Minecraft base as an ancient ruin'"
-)
+@tree.command(name="recreate", description="Generate an image using AI")
 async def recreate(interaction: discord.Interaction, scene: str):
     try:
         await interaction.response.defer(thinking=True)
-    except:
-        return
-
-    if not scene or len(scene.strip()) < 3:
-        await interaction.followup.send(
-            "❌ Please provide a short scene description.",
-            ephemeral=True
-        )
-        return
-
+    except: return
     if not HUGGINGFACE_TOKEN:
-        await interaction.followup.send(
-            "❌ Missing HUGGINGFACE_TOKEN environment variable.",
-            ephemeral=True
-        )
+        await interaction.followup.send("❌ Missing HF Token.", ephemeral=True)
         return
-
     try:
-        client = InferenceClient(api_key=HUGGINGFACE_TOKEN)
-        
-        loop = asyncio.get_event_loop()
-        img_bytes = await loop.run_in_executor(
-            None,
-            lambda: client.text_to_image(scene, model=HF_MODEL)
-        )
-
-        tmpdir = tempfile.gettempdir()
-        file_path = os.path.join(tmpdir, "recreate.png")
-        with open(file_path, "wb") as f:
-            f.write(img_bytes.read() if hasattr(img_bytes, 'read') else img_bytes)
-
-        file = discord.File(file_path, filename="recreate.png")
-
-        embed = discord.Embed(
-            title="🖼️ Recreated Image",
-            description=f"**Prompt:** {scene}",
-            color=discord.Color.blurple()
-        )
+        client_hf = InferenceClient(api_key=HUGGINGFACE_TOKEN)
+        img_bytes = await asyncio.get_event_loop().run_in_executor(None, lambda: client_hf.text_to_image(scene, model=HF_MODEL))
+        tmp = os.path.join(tempfile.gettempdir(), f"recreate_{interaction.id}.png")
+        with open(tmp, "wb") as f: f.write(img_bytes.read() if hasattr(img_bytes, 'read') else img_bytes)
+        file = discord.File(tmp, filename="recreate.png")
+        embed = discord.Embed(title="🖼️ AI Generated Image", description=f"**Prompt:** {scene}", color=discord.Color.blurple())
         embed.set_image(url="attachment://recreate.png")
-
         await interaction.followup.send(embed=embed, file=file)
-
     except Exception as e:
-        await interaction.followup.send(
-            f"❌ Generation failed: {str(e)[:100]}",
-            ephemeral=True
-        )
-        return
+        await interaction.followup.send(f"❌ Failed: {str(e)[:100]}")
 
 # --- AI Voices Feature ---
 AI_VOICE_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
-TTS_MODEL = "facebook/mms-tts-eng"
+TTS_MODEL = "facebook/fastspeech2-en-ljspeech"
 
 PERSONAS = {
-    "Donald Trump": "You are Donald Trump. Speak in his iconic style: use superlatives like 'tremendous', 'huge', 'disaster', 'fake news'. Mention building walls, winning, and how great you are. Be very confident and slightly repetitive.",
-    "Gordon Ramsay": "You are Gordon Ramsay. You are extremely angry and critical. Use culinary insults like 'idiot sandwich', 'raw', 'disgrace'. Use plenty of exclamation marks and be very aggressive about the quality of whatever is being discussed.",
-    "Snoop Dogg": "You are Snoop Dogg. Speak in a very relaxed, laid-back manner. Use slang like 'fo shizzle', 'my nizzle', 'izzle'. Mention smoking, West Coast vibes, and being 'chill'. Use emojis like 🌿🔥💨.",
-    "Elon Musk": "You are Elon Musk. Talk about Mars, rockets, X (formerly Twitter), and the future. Use technical jargon, mention 'first principles', and be slightly awkward but visionary. Use 'meme' culture references.",
-    "Arnold Schwarzenegger": "You are Arnold Schwarzenegger. Speak like a tough action hero with a thick Austrian accent. Use catchphrases like 'I'll be back', 'Get to the chopper', 'Hasta la vista, baby'. Focus on strength and muscles.",
-    "Morgan Freeman": "You are Morgan Freeman. Speak with a calm, wise, and authoritative voice. Use sophisticated language and narrate the situation as if it's a profound movie moment. Be very soothing."
+    "Donald Trump": "You are Donald Trump. Speak in his iconic style: use superlatives like 'tremendous', 'huge', 'disaster'. Mention building walls and winning.",
+    "Gordon Ramsay": "You are Gordon Ramsay. You are extremely angry and critical. Use culinary insults like 'idiot sandwich', 'raw', 'disgrace'.",
+    "Snoop Dogg": "You are Snoop Dogg. Speak in a very relaxed, laid-back manner. Use slang like 'fo shizzle', 'my nizzle'.",
+    "Elon Musk": "You are Elon Musk. Talk about Mars, rockets, X, and the future. Use technical jargon and mention 'first principles'.",
+    "Arnold Schwarzenegger": "You are Arnold Schwarzenegger. Speak like a tough action hero with catchphrases like 'I'll be back'.",
+    "Morgan Freeman": "You are Morgan Freeman. Speak with a calm, wise, and authoritative voice. Use sophisticated language."
 }
 
-@tree.command(name="ai_voice", description="Ask a famous person a ridiculous question!")
-@app_commands.describe(
-    character="The famous person you want to hear from",
-    question="The ridiculous question to ask"
-)
-@app_commands.choices(character=[
-    app_commands.Choice(name=name, value=name) for name in PERSONAS.keys()
-])
+@tree.command(name="ai_voice", description="Ask a famous person a question!")
+@app_commands.describe(character="The famous person", question="The question")
+@app_commands.choices(character=[app_commands.Choice(name=n, value=n) for n in PERSONAS.keys()])
 async def ai_voice(interaction: discord.Interaction, character: app_commands.Choice[str], question: str):
     try:
         await interaction.response.defer(thinking=True)
-    except:
-        return
-
+    except: return
     if not HUGGINGFACE_TOKEN:
-        await interaction.followup.send("❌ Missing HUGGINGFACE_TOKEN environment variable.", ephemeral=True)
+        await interaction.followup.send("❌ Missing Token.", ephemeral=True)
         return
-
+    
     persona_prompt = PERSONAS[character.value]
-    full_prompt = f"{persona_prompt}\n\nQuestion: {question}\n\nAnswer:"
-
     try:
-        client = InferenceClient(token=HUGGINGFACE_TOKEN)
-        
+        client_hf = InferenceClient(token=HUGGINGFACE_TOKEN)
         loop = asyncio.get_event_loop()
         
         def generate_text():
             try:
-                print(f"DEBUG: Generating text for {character.value} using {AI_VOICE_MODEL}")
-                messages = [
-                    {"role": "system", "content": persona_prompt},
-                    {"role": "user", "content": question}
-                ]
-                
-                response = client.chat_completion(
-                    messages=messages,
-                    model=AI_VOICE_MODEL,
-                    max_tokens=150,
-                    temperature=0.7
-                )
-                
-                print(f"DEBUG: Response type: {type(response)}")
-                content = response.choices[0].message.content
-                return content.strip()
-            except Exception as e:
-                print(f"DEBUG: Text generation error detail: {str(e)}")
-                return f"Text Error: {str(e)}"
+                messages = [{"role": "system", "content": persona_prompt}, {"role": "user", "content": question}]
+                response = client_hf.chat_completion(messages=messages, model=AI_VOICE_MODEL, max_tokens=150, temperature=0.7)
+                return response.choices[0].message.content.strip()
+            except Exception as e: return f"Text Error: {str(e)}"
         
         ai_response = await loop.run_in_executor(None, generate_text)
-
         audio_file = None
+        audio_success = False
+        
         if not ai_response.startswith("Text Error:"):
             try:
-                # Use a slightly shorter version for TTS to ensure it doesn't time out
                 tts_text = ai_response[:300]
-                print(f"DEBUG: Generating TTS for: {tts_text[:30]}...")
-                audio_data = await loop.run_in_executor(
-                    None,
-                    lambda: client.text_to_speech(tts_text, model=TTS_MODEL)
-                )
-                tmpdir = tempfile.gettempdir()
-                audio_path = os.path.join(tmpdir, f"voice_{interaction.id}.flac")
-                with open(audio_path, "wb") as f:
-                    f.write(audio_data)
-                audio_file = discord.File(audio_path, filename="voice.flac")
-                print("DEBUG: Audio file created successfully")
-            except Exception as e:
-                print(f"DEBUG: TTS error detail: {str(e)}")
+                audio_data = await loop.run_in_executor(None, lambda: client_hf.text_to_speech(tts_text, model=TTS_MODEL))
+                if audio_data and len(audio_data) > 100:
+                    tmp = os.path.join(tempfile.gettempdir(), f"voice_{interaction.id}.mp3")
+                    with open(tmp, "wb") as f: f.write(audio_data)
+                    audio_file = discord.File(tmp, filename="voice.mp3")
+                    audio_success = True
+            except Exception as e: 
+                print(f"DEBUG: TTS error: {e}")
+                audio_success = False
 
         embed = discord.Embed(
-            title=f"🗣️ {character.value} Responds",
-            description=f"**Q:** {question}\n\n**A:** {ai_response}",
-            color=discord.Color.random(),
+            title=f"🗣️ {character.value} Responds", 
+            description=f"**Q:** {question}\n\n**A:** {ai_response}\n\n*Click the file below to hear the voice!*", 
+            color=discord.Color.random(), 
             timestamp=datetime.now(timezone.utc)
         )
-        embed.set_footer(text=f"Requested by {interaction.user.display_name} • Click the file below to hear the voice!", icon_url=interaction.user.display_avatar.url)
+        footer = f"Requested by {interaction.user.display_name} • {'Audio ready!' if audio_success else 'Audio failed.'}"
+        embed.set_footer(text=footer, icon_url=interaction.user.display_avatar.url)
 
         if audio_file:
-            await interaction.followup.send(embed=embed, file=audio_file)
+            msg = await interaction.followup.send(embed=embed, file=audio_file)
+            if msg and msg.attachments:
+                try:
+                    view = View()
+                    view.add_item(Button(label="Download / Listen", url=msg.attachments[0].url, style=discord.ButtonStyle.link, emoji="📥"))
+                    await msg.edit(view=view)
+                except: pass
         else:
             await interaction.followup.send(embed=embed)
-
     except Exception as e:
-        print(f"AI Voice Error: {e}")
-        await interaction.followup.send(f"❌ An error occurred: {str(e)[:100]}")
+        await interaction.followup.send(f"❌ Error: {str(e)[:100]}")
 
 # --- Force re-sync ---
 @tree.command(name="resync", description="Force resync slash commands")
@@ -2450,20 +2398,15 @@ async def unban_user(
 
 @client.event
 async def on_ready():
-    print("✅ VERSION 2.1 - UPDATED INTERACTION HANDLING")
-    print(f"✅ Logged in as {client.user} (ID: {client.user.id})")
-    
-    # Load configs
-    configs = load_translate_configs()
-    if configs:
-        print(f"Monitoring channels for translation: {', '.join(configs.keys())}")
-    else:
-        print("No channels configured for translation.")
+    try:
+        print(f"✅ Logged in as {client.user} (ID: {client.user.id})")
+    except Exception:
+        print("✅ Logged in")
 
     # Set custom "Now Playing" status
     await client.change_presence(activity=discord.Game(name="Casino Games | /balance"))
 
-    # Optional one-time global cleanup
+    # Optional one-time global cleanup to remove any globally-registered commands
     if GLOBAL_COMMAND_CLEANUP:
         try:
             print("🧹 Clearing GLOBAL application commands...")
@@ -2473,45 +2416,35 @@ async def on_ready():
         except Exception as e:
             print(f"❌ Failed to clear global commands: {e}")
 
-    # Conditionally sync guild commands
+    # Conditionally sync guild commands to avoid duplicate syncing across multiple instances
     if SYNC_COMMANDS:
         try:
-            # Sync to the specific test guild for instant updates
+            await tree.sync()
+            print("⚡ Global slash commands synced (propagation can take up to ~1 hour)")
+            # Temporary dual-sync: also sync test guild for instant updates
             await tree.sync(guild=GUILD_OBJECT)
-            print(f"⚡ Guild {GUILD_ID} slash commands synced instantly")
-            
-            # Optional: Also sync globally if needed, but beware of propagation time
-            # await tree.sync()
-            # print("⚡ Global slash commands synced")
+            print(f"⚡ Guild {GUILD_ID} slash commands synced instantly for testing")
         except Exception as e:
             print(f"❌ Sync failed: {e}")
     else:
-        print("⏭️ Skipping sync because SYNC_COMMANDS=false")
+        print("⏭️ Skipping guild sync because SYNC_COMMANDS=false")
         try:
+            # Fetch existing guild commands so the bot can route interactions without altering remote state
             await tree.fetch_commands()
-            print("🔎 Fetched existing commands for routing.")
+            print("🔎 Fetched existing global commands for routing.")
         except Exception as e:
-            print(f"❌ Failed to fetch commands: {e}")
+            print(f"❌ Failed to fetch guild commands: {e}")
 
-# Global Slash Command Error Handler
+
 @tree.error
 async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
-    if isinstance(error, app_commands.CommandInvokeError):
-        # 10062 is "Unknown Interaction"
-        if "10062" in str(error):
-            print(f"⚠️ Interaction {interaction.id} timed out. (Normal on Render Free tier wake-up)")
-            return
-    
-    print(f"❌ Slash Command Error: {error}")
+    if isinstance(error, app_commands.CommandInvokeError) and "10062" in str(error): return
+    print(f"❌ Command Error: {error}")
     try:
-        error_msg = f"❌ An error occurred: {str(error)[:100]}"
-        if not interaction.response.is_done():
-            await interaction.response.send_message(error_msg, ephemeral=True)
-        else:
-            await interaction.followup.send(error_msg, ephemeral=True)
-    except Exception:
-        pass
-
+        msg = f"❌ Error: {str(error)[:100]}"
+        if not interaction.response.is_done(): await interaction.response.send_message(msg, ephemeral=True)
+        else: await interaction.followup.send(msg, ephemeral=True)
+    except: pass
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
