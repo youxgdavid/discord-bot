@@ -4,3 +4,4 @@ flask
 Pillow>=9.0.0
 deep-translator
 python-dotenv
+huggingface-hub>=0.16.0
