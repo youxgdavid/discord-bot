@@ -2043,14 +2043,14 @@ PERSONAS = {
 }
 
 # Mapping personas to ElevenLabs Voice IDs
-# You can find more voice IDs at https://elevenlabs.io/app/voice-lab
+# These are official standard premade voices available to everyone
 PERSONA_VOICES = {
-    "Donald Trump": "cgSgS1p8qyau9n9Pym8r", # Marcus
-    "Gordon Ramsay": "nPczCjzI2it9tZRW8uAV", # Brian
-    "Snoop Dogg": "cgSgS1p8qyau9n9Pym8r", # Marcus
-    "Elon Musk": "TX3LPaxmHKxFfWec9sWn", # Liam
-    "Arnold Schwarzenegger": "cgSgS1p8qyau9n9Pym8r", # Marcus
-    "Morgan Freeman": "cgSgS1p8qyau9n9Pym8r" # Marcus
+    "Donald Trump": "VR6AewyH7otAnSjaqayz", # Arnold (Deep, tough)
+    "Gordon Ramsay": "N2lVS1wzNInBe9reDnoq", # Callum (Aggressive)
+    "Snoop Dogg": "TxGEqnHW487U5Y4FTeRz", # Josh (Smooth)
+    "Elon Musk": "IKne3meq5pS7M9DSc9Be", # Charlie (Techy)
+    "Arnold Schwarzenegger": "VR6AewyH7otAnSjaqayz", # Arnold
+    "Morgan Freeman": "pNInz6obpgDQGcFmaJgB" # Adam (Deep calm)
 }
 
 @tree.command(name="ai_voice", description="Ask a famous person a question!")
@@ -2098,7 +2098,7 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
                     }
                     data = {
                         "text": tts_text,
-                        "model_id": "eleven_monolingual_v1",
+                        "model_id": "eleven_turbo_v2_5",
                         "voice_settings": {
                             "stability": 0.5,
                             "similarity_boost": 0.75
@@ -2116,9 +2116,13 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
                             else:
                                 audio_status = "Audio failed (Empty result)"
                         else:
-                            error_info = await resp.text()
-                            print(f"DEBUG: ElevenLabs API error {resp.status}: {error_info}")
+                            error_json = await resp.json()
+                            error_msg = error_json.get("detail", {}).get("message", "Unknown error")
+                            print(f"DEBUG: ElevenLabs API error {resp.status}: {error_msg}")
                             audio_status = f"Audio error ({resp.status})"
+                            # Provide more context to the user via ephemeral if it's a 404
+                            if resp.status == 404:
+                                audio_status = "Audio error (Voice ID not found)"
             except Exception as e:
                 print(f"DEBUG: ElevenLabs Request exception: {e}")
                 audio_status = f"Audio failed (Request Error)"
