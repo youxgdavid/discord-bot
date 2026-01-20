@@ -20,7 +20,7 @@ from huggingface_hub import InferenceClient
 # Load environment variables
 load_dotenv()
 HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
-HF_MODEL = "runwayml/stable-diffusion-v1-5"
+HF_MODEL = "stabilityai/stable-diffusion-xl-base-1.0"
 
 # Create Flask app for uptime (e.g., Render)
 app = Flask(__name__)
@@ -2036,60 +2036,17 @@ async def recreate(interaction: discord.Interaction, scene: str):
         return
 
     try:
-        # Update to new Hugging Face Inference Router URL
-        API_URL = f"https://router.huggingface.co/hf-inference/v1/images/generations"
-        headers = {"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"}
+        client_hf = InferenceClient(token=HUGGINGFACE_TOKEN)
         
-        payload = {
-            "model": HF_MODEL,
-            "prompt": scene,
-            "n": 1,
-            "size": "1024x1024"
-        }
-        
-        async with aiohttp.ClientSession() as session:
-            async with session.post(API_URL, headers=headers, json=payload, timeout=60) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    # The new API returns a URL or base64 in a list
-                    if "data" in result and len(result["data"]) > 0:
-                        img_url = result["data"][0].get("url")
-                        if img_url:
-                            async with session.get(img_url) as img_res:
-                                if img_res.status == 200:
-                                    img_data = await img_res.read()
-                                else:
-                                    await interaction.followup.send("❌ Failed to download generated image.")
-                                    return
-                        else:
-                            # Handle potential base64 return
-                            b64 = result["data"][0].get("b64_json")
-                            if b64:
-                                import base64
-                                img_data = base64.b64decode(b64)
-                            else:
-                                await interaction.followup.send("❌ No image data received.")
-                                return
-                    else:
-                        await interaction.followup.send("❌ Unexpected API response format.")
-                        return
-                elif response.status == 401:
-                    await interaction.followup.send("❌ Invalid Hugging Face Token. Ensure you have the **'Serverless Inference API'** scope enabled, or try using a **'Read' (Classic)** token.")
-                    return
-                elif response.status == 402:
-                    await interaction.followup.send("❌ The AI model currently requires a paid subscription or has reached its free limit.")
-                    return
-                elif response.status == 429:
-                    await interaction.followup.send("❌ Too many requests (Rate limited). Please wait a moment.")
-                    return
-                elif response.status == 503:
-                    await interaction.followup.send("❌ Model is currently loading on Hugging Face. Please try again in 30 seconds.")
-                    return
-                else:
-                    error_text = await response.text()
-                    await interaction.followup.send(f"❌ HF Error: {response.status} - {error_text[:100]}")
-                    return
+        def generate():
+            # This returns a PIL.Image object
+            img = client_hf.text_to_image(scene, model=HF_MODEL)
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            return buf.getvalue()
 
+        img_data = await asyncio.get_event_loop().run_in_executor(None, generate)
+        
         tmp = os.path.join(tempfile.gettempdir(), f"recreate_{interaction.id}.png")
         with open(tmp, "wb") as f: 
             f.write(img_data)
