@@ -2030,7 +2030,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
 
 # --- AI Voices Feature ---
 AI_VOICE_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
-TTS_MODEL = "facebook/mms-tts-eng"
+TTS_MODEL = "espnet/kan-bayashi_ljspeech_vits"
 
 PERSONAS = {
     "Donald Trump": "You are Donald Trump. Speak in his iconic style: use superlatives like 'tremendous', 'huge', 'disaster'. Mention building walls and winning.",
@@ -2076,8 +2076,11 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
             try:
                 async with aiohttp.ClientSession() as session:
                     async with session.post(
-                        f"https://api-inference.huggingface.co/models/{TTS_MODEL}",
-                        headers={"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"},
+                        f"https://router.huggingface.co/hf-inference/models/{TTS_MODEL}",
+                        headers={
+                            "Authorization": f"Bearer {HUGGINGFACE_TOKEN}",
+                            "Content-Type": "application/json"
+                        },
                         json={"inputs": tts_text},
                         timeout=30
                     ) as resp:
