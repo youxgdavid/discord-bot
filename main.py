@@ -2036,9 +2036,15 @@ async def recreate(interaction: discord.Interaction, scene: str):
         return
     try:
         client_hf = InferenceClient(api_key=HUGGINGFACE_TOKEN)
-        img_bytes = await asyncio.get_event_loop().run_in_executor(None, lambda: client_hf.text_to_image(scene, model=HF_MODEL))
+        def get_image():
+            img = client_hf.text_to_image(scene, model=HF_MODEL)
+            # Ensure we have bytes before returning from executor
+            return img.read() if hasattr(img, 'read') else img
+
+        img_data = await asyncio.get_event_loop().run_in_executor(None, get_image)
         tmp = os.path.join(tempfile.gettempdir(), f"recreate_{interaction.id}.png")
-        with open(tmp, "wb") as f: f.write(img_bytes.read() if hasattr(img_bytes, 'read') else img_bytes)
+        with open(tmp, "wb") as f: 
+            f.write(img_data)
         file = discord.File(tmp, filename="recreate.png")
         embed = discord.Embed(title="🖼️ AI Generated Image", description=f"**Prompt:** {scene}", color=discord.Color.blurple())
         embed.set_image(url="attachment://recreate.png")
