@@ -2039,18 +2039,21 @@ PERSONAS = {
     "Snoop Dogg": "You are Snoop Dogg. Speak in a very relaxed, laid-back manner. Use slang like 'fo shizzle', 'my nizzle'.",
     "Elon Musk": "You are Elon Musk. Talk about Mars, rockets, X, and the future. Use technical jargon and mention 'first principles'.",
     "Arnold Schwarzenegger": "You are Arnold Schwarzenegger. Speak like a tough action hero with catchphrases like 'I'll be back'.",
-    "Morgan Freeman": "You are Morgan Freeman. Speak with a calm, wise, and authoritative voice. Use sophisticated language."
+    "Morgan Freeman": "You are Morgan Freeman. Speak with a calm, wise, and authoritative voice. Use sophisticated language.",
+    "Taylor Swift": "You are Taylor Swift. Speak in a kind, artistic, and poetic way. Mention your fans (Swifties) and songwriting.",
+    "Joe Biden": "You are Joe Biden. Speak in your presidential tone, use phrases like 'folks', 'here's the deal', and 'no malarkey'."
 }
 
-# Mapping personas to ElevenLabs Voice IDs
-# These are official standard premade voices available to everyone
+# Mapping personas to ElevenLabs Voice IDs (Commonly available default voices)
 PERSONA_VOICES = {
-    "Donald Trump": "VR6AewyH7otAnSjaqayz", # Arnold (Deep, tough)
-    "Gordon Ramsay": "N2lVS1wzNInBe9reDnoq", # Callum (Aggressive)
-    "Snoop Dogg": "TxGEqnHW487U5Y4FTeRz", # Josh (Smooth)
-    "Elon Musk": "IKne3meq5pS7M9DSc9Be", # Charlie (Techy)
+    "Donald Trump": "ErXw8HXBZ8vc8n74dVcv", # Antoni (Deep)
+    "Gordon Ramsay": "nPczCjzI2it9tZRW8uAV", # Brian (British)
+    "Snoop Dogg": "TxGEqnHW487U5Y4FTeRz", # Josh (Deep)
+    "Elon Musk": "TX3LPaxmHKxFfWec9sWn", # Liam (Techy)
     "Arnold Schwarzenegger": "VR6AewyH7otAnSjaqayz", # Arnold
-    "Morgan Freeman": "pNInz6obpgDQGcFmaJgB" # Adam (Deep calm)
+    "Morgan Freeman": "pNInz6obpgDQGcFmaJgB", # Adam (Calm)
+    "Taylor Swift": "21m00Tcm4TlvDq8ikWAM", # Rachel (Kind)
+    "Joe Biden": "ErXw8HXBZ8vc8n74dVcv"  # Antoni
 }
 
 @tree.command(name="ai_voice", description="Ask a famous person a question!")
@@ -2086,11 +2089,24 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
         
         if not ai_response.startswith("Text Error:"):
             tts_text = ai_response[:250].replace("*", "").replace("#", "").replace("`", "")
-            voice_id = PERSONA_VOICES.get(character.value, "nPczCjzI2it9tZRW8uAV") # Default to Brian
             
             try:
                 async with aiohttp.ClientSession() as session:
-                    # ElevenLabs API
+                    # 1. Dynamically fetch available voices from your account
+                    async with session.get("https://api.elevenlabs.io/v1/voices", headers={"xi-api-key": ELEVEN_LABS_API_KEY}) as v_resp:
+                        voice_id = "21m00Tcm4TlvDq8ikWAM" # Fallback to Rachel
+                        if v_resp.status == 200:
+                            voices_data = await v_resp.json()
+                            available_voices = {v['name'].lower(): v['voice_id'] for v in voices_data.get('voices', [])}
+                            
+                            # Try to match persona to an actual voice in your account
+                            target = character.value.split()[-1].lower() # e.g. "Trump", "Musk"
+                            for name, vid in available_voices.items():
+                                if target in name:
+                                    voice_id = vid
+                                    break
+                        
+                    # 2. Generate Audio
                     url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
                     headers = {
                         "xi-api-key": ELEVEN_LABS_API_KEY,
@@ -2098,11 +2114,8 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
                     }
                     data = {
                         "text": tts_text,
-                        "model_id": "eleven_turbo_v2_5",
-                        "voice_settings": {
-                            "stability": 0.5,
-                            "similarity_boost": 0.75
-                        }
+                        "model_id": "eleven_monolingual_v1",
+                        "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}
                     }
                     async with session.post(url, headers=headers, json=data, timeout=30) as resp:
                         if resp.status == 200:
@@ -2116,13 +2129,7 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
                             else:
                                 audio_status = "Audio failed (Empty result)"
                         else:
-                            error_json = await resp.json()
-                            error_msg = error_json.get("detail", {}).get("message", "Unknown error")
-                            print(f"DEBUG: ElevenLabs API error {resp.status}: {error_msg}")
                             audio_status = f"Audio error ({resp.status})"
-                            # Provide more context to the user via ephemeral if it's a 404
-                            if resp.status == 404:
-                                audio_status = "Audio error (Voice ID not found)"
             except Exception as e:
                 print(f"DEBUG: ElevenLabs Request exception: {e}")
                 audio_status = f"Audio failed (Request Error)"
