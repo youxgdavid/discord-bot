@@ -2007,6 +2007,8 @@ async def emojimosaic(
 
 # --- Image generation via Hugging Face Inference API ---
 HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
+ELEVEN_LABS_API_KEY = os.getenv("ELEVEN_LABS_API_KEY")
+
 HF_MODEL = "stabilityai/stable-diffusion-3.5-large"
 @tree.command(name="recreate", description="Generate an image using AI")
 async def recreate(interaction: discord.Interaction, scene: str):
@@ -2030,7 +2032,6 @@ async def recreate(interaction: discord.Interaction, scene: str):
 
 # --- AI Voices Feature ---
 AI_VOICE_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
-TTS_MODEL = "facebook/fastspeech2-en-ljspeech"
 
 PERSONAS = {
     "Donald Trump": "You are Donald Trump. Speak in his iconic style: use superlatives like 'tremendous', 'huge', 'disaster'. Mention building walls and winning.",
@@ -2041,6 +2042,17 @@ PERSONAS = {
     "Morgan Freeman": "You are Morgan Freeman. Speak with a calm, wise, and authoritative voice. Use sophisticated language."
 }
 
+# Mapping personas to ElevenLabs Voice IDs
+# You can find more voice IDs at https://elevenlabs.io/app/voice-lab
+PERSONA_VOICES = {
+    "Donald Trump": "cgSgS1p8qyau9n9Pym8r", # Marcus
+    "Gordon Ramsay": "nPczCjzI2it9tZRW8uAV", # Brian
+    "Snoop Dogg": "cgSgS1p8qyau9n9Pym8r", # Marcus
+    "Elon Musk": "TX3LPaxmHKxFfWec9sWn", # Liam
+    "Arnold Schwarzenegger": "cgSgS1p8qyau9n9Pym8r", # Marcus
+    "Morgan Freeman": "cgSgS1p8qyau9n9Pym8r" # Marcus
+}
+
 @tree.command(name="ai_voice", description="Ask a famous person a question!")
 @app_commands.describe(character="The famous person", question="The question")
 @app_commands.choices(character=[app_commands.Choice(name=n, value=n) for n in PERSONAS.keys()])
@@ -2049,7 +2061,10 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
         await interaction.response.defer(thinking=True)
     except: return
     if not HUGGINGFACE_TOKEN:
-        await interaction.followup.send("❌ Missing Token.", ephemeral=True)
+        await interaction.followup.send("❌ Missing HF Token.", ephemeral=True)
+        return
+    if not ELEVEN_LABS_API_KEY:
+        await interaction.followup.send("❌ Missing ElevenLabs API Key. Add `ELEVEN_LABS_API_KEY` to your secrets.", ephemeral=True)
         return
     
     persona_prompt = PERSONAS[character.value]
@@ -2071,36 +2086,41 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
         
         if not ai_response.startswith("Text Error:"):
             tts_text = ai_response[:250].replace("*", "").replace("#", "").replace("`", "")
+            voice_id = PERSONA_VOICES.get(character.value, "nPczCjzI2it9tZRW8uAV") # Default to Brian
             
-            # Using direct aiohttp to avoid the SDK "StopIteration" bug entirely
             try:
                 async with aiohttp.ClientSession() as session:
-                    async with session.post(
-                        f"https://router.huggingface.co/hf-inference/models/{TTS_MODEL}",
-                        headers={
-                            "Authorization": f"Bearer {HUGGINGFACE_TOKEN}",
-                            "Content-Type": "application/json"
-                        },
-                        json={"inputs": tts_text},
-                        timeout=30
-                    ) as resp:
+                    # ElevenLabs API
+                    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+                    headers = {
+                        "xi-api-key": ELEVEN_LABS_API_KEY,
+                        "Content-Type": "application/json"
+                    }
+                    data = {
+                        "text": tts_text,
+                        "model_id": "eleven_monolingual_v1",
+                        "voice_settings": {
+                            "stability": 0.5,
+                            "similarity_boost": 0.75
+                        }
+                    }
+                    async with session.post(url, headers=headers, json=data, timeout=30) as resp:
                         if resp.status == 200:
                             audio_data = await resp.read()
                             if len(audio_data) > 100:
-                                tmp = os.path.join(tempfile.gettempdir(), f"voice_{interaction.id}.wav")
+                                tmp = os.path.join(tempfile.gettempdir(), f"voice_{interaction.id}.mp3")
                                 with open(tmp, "wb") as f:
                                     f.write(audio_data)
-                                audio_file = discord.File(tmp, filename="voice.wav")
+                                audio_file = discord.File(tmp, filename="voice.mp3")
                                 audio_status = "Audio ready!"
                             else:
                                 audio_status = "Audio failed (Empty result)"
                         else:
                             error_info = await resp.text()
-                            print(f"DEBUG: TTS API error {resp.status}: {error_info}")
+                            print(f"DEBUG: ElevenLabs API error {resp.status}: {error_info}")
                             audio_status = f"Audio error ({resp.status})"
-                            if resp.status == 503: audio_status = "Audio failed (Model loading...)"
             except Exception as e:
-                print(f"DEBUG: TTS Request exception: {e}")
+                print(f"DEBUG: ElevenLabs Request exception: {e}")
                 audio_status = f"Audio failed (Request Error)"
 
         embed = discord.Embed(
