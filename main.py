@@ -19,6 +19,8 @@ from huggingface_hub import InferenceClient
 
 # Load environment variables
 load_dotenv()
+HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
+HF_MODEL = "runwayml/stable-diffusion-v1-5"
 
 # Create Flask app for uptime (e.g., Render)
 app = Flask(__name__)
@@ -2024,9 +2026,6 @@ async def emojimosaic(
     await interaction.followup.send(embed=embed, files=files)
 
 # --- Image generation via Hugging Face Inference API ---
-HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
-
-HF_MODEL = "stabilityai/stable-diffusion-2-1"
 @tree.command(name="recreate", description="Generate an image using AI")
 async def recreate(interaction: discord.Interaction, scene: str):
     try:
@@ -2046,7 +2045,9 @@ async def recreate(interaction: discord.Interaction, scene: str):
         await interaction.followup.send(embed=embed, file=file)
     except Exception as e:
         error_msg = str(e)
-        if "402" in error_msg:
+        if "401" in error_msg:
+            await interaction.followup.send("❌ Invalid Hugging Face Token. Ensure you have the **'Serverless Inference API'** scope enabled, or try using a **'Read' (Classic)** token.")
+        elif "402" in error_msg:
             await interaction.followup.send("❌ The AI model currently requires a paid subscription or has reached its free limit. Try again later or contact the admin.")
         elif "429" in error_msg:
             await interaction.followup.send("❌ Too many requests. Please wait a moment before trying again.")
