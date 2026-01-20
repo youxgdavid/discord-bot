@@ -2036,13 +2036,43 @@ async def recreate(interaction: discord.Interaction, scene: str):
         return
 
     try:
-        API_URL = f"https://api-inference.huggingface.co/models/{HF_MODEL}"
+        # Update to new Hugging Face Inference Router URL
+        API_URL = f"https://router.huggingface.co/hf-inference/v1/images/generations"
         headers = {"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"}
         
+        payload = {
+            "model": HF_MODEL,
+            "prompt": scene,
+            "n": 1,
+            "size": "1024x1024"
+        }
+        
         async with aiohttp.ClientSession() as session:
-            async with session.post(API_URL, headers=headers, json={"inputs": scene}, timeout=60) as response:
+            async with session.post(API_URL, headers=headers, json=payload, timeout=60) as response:
                 if response.status == 200:
-                    img_data = await response.read()
+                    result = await response.json()
+                    # The new API returns a URL or base64 in a list
+                    if "data" in result and len(result["data"]) > 0:
+                        img_url = result["data"][0].get("url")
+                        if img_url:
+                            async with session.get(img_url) as img_res:
+                                if img_res.status == 200:
+                                    img_data = await img_res.read()
+                                else:
+                                    await interaction.followup.send("❌ Failed to download generated image.")
+                                    return
+                        else:
+                            # Handle potential base64 return
+                            b64 = result["data"][0].get("b64_json")
+                            if b64:
+                                import base64
+                                img_data = base64.b64decode(b64)
+                            else:
+                                await interaction.followup.send("❌ No image data received.")
+                                return
+                    else:
+                        await interaction.followup.send("❌ Unexpected API response format.")
+                        return
                 elif response.status == 401:
                     await interaction.followup.send("❌ Invalid Hugging Face Token. Ensure you have the **'Serverless Inference API'** scope enabled, or try using a **'Read' (Classic)** token.")
                     return
