@@ -39,7 +39,7 @@ def keep_alive():
 keep_alive()
 
 # Discord client and intents
-BOT_VERSION = "2.2.8-MMS-FIX"
+BOT_VERSION = "2.3.0-ELEVEN-DYNAMIC"
 intents = discord.Intents.default()
 intents.members = True  # Required for member info like roles/join date
 intents.message_content = True # Required for auto-translation to read messages
@@ -261,6 +261,24 @@ async def on_member_join(member: discord.Member):
 
     except discord.Forbidden:
         pass
+
+# --- /check_setup command ---
+@tree.command(name="check_setup", description="Verify if bot tokens and version are correctly loaded")
+async def check_setup(interaction: discord.Interaction):
+    hf_status = "✅ Loaded" if HUGGINGFACE_TOKEN else "❌ Missing"
+    el_status = "✅ Loaded" if ELEVEN_LABS_API_KEY else "❌ Missing"
+    
+    embed = discord.Embed(title="Bot Setup Diagnostic", color=discord.Color.blue())
+    embed.add_field(name="Bot Version", value=f"`{BOT_VERSION}`", inline=False)
+    embed.add_field(name="HuggingFace Token", value=hf_status, inline=True)
+    embed.add_field(name="ElevenLabs Key", value=el_status, inline=True)
+    
+    if ELEVEN_LABS_API_KEY:
+        key_preview = f"{ELEVEN_LABS_API_KEY[:4]}...{ELEVEN_LABS_API_KEY[-4:]}" if len(ELEVEN_LABS_API_KEY) > 8 else "Too short!"
+        embed.add_field(name="ElevenLabs Key Preview", value=f"`{key_preview}`", inline=False)
+    
+    embed.set_footer(text="If anything is 'Missing', check your Render environment variables.")
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 # --- /ping command ---
 @tree.command(name="ping", description="Check the bot's latency and status")
@@ -2070,6 +2088,9 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
         await interaction.followup.send("❌ Missing ElevenLabs API Key. Add `ELEVEN_LABS_API_KEY` to your secrets.", ephemeral=True)
         return
     
+    # Clean the key to prevent copy-paste errors
+    api_key = ELEVEN_LABS_API_KEY.strip()
+    
     persona_prompt = PERSONAS[character.value]
     try:
         client_hf = InferenceClient(token=HUGGINGFACE_TOKEN)
@@ -2092,44 +2113,54 @@ async def ai_voice(interaction: discord.Interaction, character: app_commands.Cho
             
             try:
                 async with aiohttp.ClientSession() as session:
-                    # 1. Dynamically fetch available voices from your account
-                    async with session.get("https://api.elevenlabs.io/v1/voices", headers={"xi-api-key": ELEVEN_LABS_API_KEY}) as v_resp:
-                        voice_id = "21m00Tcm4TlvDq8ikWAM" # Fallback to Rachel
+                    # 1. Dynamically fetch available voices
+                    headers = {"xi-api-key": api_key}
+                    async with session.get("https://api.elevenlabs.io/v1/voices", headers=headers) as v_resp:
+                        voice_id = None
                         if v_resp.status == 200:
                             voices_data = await v_resp.json()
-                            available_voices = {v['name'].lower(): v['voice_id'] for v in voices_data.get('voices', [])}
-                            
-                            # Try to match persona to an actual voice in your account
-                            target = character.value.split()[-1].lower() # e.g. "Trump", "Musk"
-                            for name, vid in available_voices.items():
-                                if target in name:
-                                    voice_id = vid
-                                    break
-                        
-                    # 2. Generate Audio
-                    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
-                    headers = {
-                        "xi-api-key": ELEVEN_LABS_API_KEY,
-                        "Content-Type": "application/json"
-                    }
-                    data = {
-                        "text": tts_text,
-                        "model_id": "eleven_monolingual_v1",
-                        "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}
-                    }
-                    async with session.post(url, headers=headers, json=data, timeout=30) as resp:
-                        if resp.status == 200:
-                            audio_data = await resp.read()
-                            if len(audio_data) > 100:
-                                tmp = os.path.join(tempfile.gettempdir(), f"voice_{interaction.id}.mp3")
-                                with open(tmp, "wb") as f:
-                                    f.write(audio_data)
-                                audio_file = discord.File(tmp, filename="voice.mp3")
-                                audio_status = "Audio ready!"
-                            else:
-                                audio_status = "Audio failed (Empty result)"
+                            voices = voices_data.get('voices', [])
+                            if voices:
+                                # Default to first voice
+                                voice_id = voices[0]['voice_id']
+                                # Try to match name
+                                target = character.value.split()[-1].lower()
+                                for v in voices:
+                                    if target in v['name'].lower():
+                                        voice_id = v['voice_id']
+                                        break
                         else:
-                            audio_status = f"Audio error ({resp.status})"
+                            v_err = await v_resp.text()
+                            print(f"DEBUG: Voice list error {v_resp.status}: {v_err}")
+                            audio_status = f"Auth Error ({v_resp.status})"
+                        
+                    # 2. Generate Audio (only if we have a voice_id)
+                    if voice_id:
+                        url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+                        headers["Content-Type"] = "application/json"
+                        data = {
+                            "text": tts_text,
+                            "model_id": "eleven_multilingual_v2",
+                            "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}
+                        }
+                        async with session.post(url, headers=headers, json=data, timeout=30) as resp:
+                            if resp.status == 200:
+                                audio_data = await resp.read()
+                                if len(audio_data) > 100:
+                                    tmp = os.path.join(tempfile.gettempdir(), f"voice_{interaction.id}.mp3")
+                                    with open(tmp, "wb") as f:
+                                        f.write(audio_data)
+                                    audio_file = discord.File(tmp, filename="voice.mp3")
+                                    audio_status = "Audio ready!"
+                                else:
+                                    audio_status = "Audio failed (Empty result)"
+                            else:
+                                r_err = await resp.json()
+                                detail = r_err.get("detail", {})
+                                msg = detail.get("message", "Request Failed")
+                                audio_status = f"TTS Error: {msg}"
+                    elif not audio_status.startswith("Auth"):
+                        audio_status = "Voice list empty"
             except Exception as e:
                 print(f"DEBUG: ElevenLabs Request exception: {e}")
                 audio_status = f"Audio failed (Request Error)"
