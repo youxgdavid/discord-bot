@@ -2034,17 +2034,36 @@ async def recreate(interaction: discord.Interaction, scene: str):
     if not HUGGINGFACE_TOKEN:
         await interaction.followup.send("❌ Missing HF Token.", ephemeral=True)
         return
-    try:
-        client_hf = InferenceClient(api_key=HUGGINGFACE_TOKEN)
-        def get_image():
-            img = client_hf.text_to_image(scene, model=HF_MODEL)
-            # Ensure we have bytes before returning from executor
-            return img.read() if hasattr(img, 'read') else img
 
-        img_data = await asyncio.get_event_loop().run_in_executor(None, get_image)
+    try:
+        API_URL = f"https://api-inference.huggingface.co/models/{HF_MODEL}"
+        headers = {"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"}
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(API_URL, headers=headers, json={"inputs": scene}, timeout=60) as response:
+                if response.status == 200:
+                    img_data = await response.read()
+                elif response.status == 401:
+                    await interaction.followup.send("❌ Invalid Hugging Face Token. Ensure you have the **'Serverless Inference API'** scope enabled, or try using a **'Read' (Classic)** token.")
+                    return
+                elif response.status == 402:
+                    await interaction.followup.send("❌ The AI model currently requires a paid subscription or has reached its free limit.")
+                    return
+                elif response.status == 429:
+                    await interaction.followup.send("❌ Too many requests (Rate limited). Please wait a moment.")
+                    return
+                elif response.status == 503:
+                    await interaction.followup.send("❌ Model is currently loading on Hugging Face. Please try again in 30 seconds.")
+                    return
+                else:
+                    error_text = await response.text()
+                    await interaction.followup.send(f"❌ HF Error: {response.status} - {error_text[:100]}")
+                    return
+
         tmp = os.path.join(tempfile.gettempdir(), f"recreate_{interaction.id}.png")
         with open(tmp, "wb") as f: 
             f.write(img_data)
+        
         file = discord.File(tmp, filename="recreate.png")
         embed = discord.Embed(title="🖼️ AI Generated Image", description=f"**Prompt:** {scene}", color=discord.Color.blurple())
         embed.set_image(url="attachment://recreate.png")
