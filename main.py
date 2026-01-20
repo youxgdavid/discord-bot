@@ -2026,7 +2026,7 @@ async def emojimosaic(
 # --- Image generation via Hugging Face Inference API ---
 HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
 
-HF_MODEL = "stabilityai/stable-diffusion-3.5-large"
+HF_MODEL = "stabilityai/stable-diffusion-2-1"
 @tree.command(name="recreate", description="Generate an image using AI")
 async def recreate(interaction: discord.Interaction, scene: str):
     try:
@@ -2045,7 +2045,13 @@ async def recreate(interaction: discord.Interaction, scene: str):
         embed.set_image(url="attachment://recreate.png")
         await interaction.followup.send(embed=embed, file=file)
     except Exception as e:
-        await interaction.followup.send(f"❌ Failed: {str(e)[:100]}")
+        error_msg = str(e)
+        if "402" in error_msg:
+            await interaction.followup.send("❌ The AI model currently requires a paid subscription or has reached its free limit. Try again later or contact the admin.")
+        elif "429" in error_msg:
+            await interaction.followup.send("❌ Too many requests. Please wait a moment before trying again.")
+        else:
+            await interaction.followup.send(f"❌ Failed: {error_msg[:100]}")
 
 # --- Force re-sync ---
 @tree.command(name="resync", description="Force resync slash commands")
