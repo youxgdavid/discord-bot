@@ -2026,6 +2026,75 @@ async def emojimosaic(
     await interaction.followup.send(embed=embed, files=files)
 
 # --- Image generation via Hugging Face Inference API ---
+async def generate_image_bytes(scene: str):
+    """Core logic to fetch image from HF"""
+    client_hf = InferenceClient(token=HUGGINGFACE_TOKEN)
+    def generate():
+        img = client_hf.text_to_image(scene, model=HF_MODEL)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return buf.getvalue()
+    return await asyncio.get_event_loop().run_in_executor(None, generate)
+
+class RecreateView(discord.ui.View):
+    def __init__(self, scene: str, user_id: int):
+        super().__init__(timeout=180) # 3 minute timeout
+        self.scene = scene
+        self.user_id = user_id
+
+    async def handle_regeneration(self, interaction: discord.Interaction, prompt: str):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("❌ This is not your generation!", ephemeral=True)
+            return
+
+        try:
+            await interaction.response.defer(thinking=True)
+        except: return
+
+        try:
+            img_data = await generate_image_bytes(prompt)
+            
+            tmp = os.path.join(tempfile.gettempdir(), f"recreate_{interaction.id}.png")
+            with open(tmp, "wb") as f: 
+                f.write(img_data)
+            
+            file = discord.File(tmp, filename="recreate.png")
+            embed = discord.Embed(title="🖼️ AI Generated Image", description=f"**Prompt:** {prompt}", color=discord.Color.blurple())
+            embed.set_image(url="attachment://recreate.png")
+            
+            # Create a new view for the new message
+            new_view = RecreateView(prompt, self.user_id)
+            await interaction.followup.send(embed=embed, file=file, view=new_view)
+        except Exception as e:
+            await interaction.followup.send(f"❌ Failed to regenerate: {str(e)[:100]}", ephemeral=True)
+
+    @discord.ui.button(label="Retry", emoji="🔄", style=discord.ButtonStyle.grey, row=0)
+    async def retry(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.handle_regeneration(interaction, self.scene)
+
+    @discord.ui.button(label="Retry in different styles", emoji="🎨", style=discord.ButtonStyle.grey, row=0)
+    async def retry_styles(self, interaction: discord.Interaction, button: discord.ui.Button):
+        styles = ["cyberpunk", "oil painting", "pencil sketch", "anime", "photorealistic", "origami", "pixel art"]
+        new_prompt = f"{self.scene}, {random.choice(styles)} style"
+        await self.handle_regeneration(interaction, new_prompt)
+
+    @discord.ui.button(label="Variation", style=discord.ButtonStyle.grey, row=1)
+    async def variation(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Add some random modifiers for variation
+        modifiers = ["different lighting", "slightly different perspective", "more contrast", "softer colors"]
+        new_prompt = f"{self.scene}, {random.choice(modifiers)}"
+        await self.handle_regeneration(interaction, new_prompt)
+
+    @discord.ui.button(label="Upscale", style=discord.ButtonStyle.grey, row=1)
+    async def upscale(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # We simulate upscale by adding quality keywords
+        new_prompt = f"{self.scene}, 4k, 8k, highly detailed, sharp focus, masterpiece"
+        await self.handle_regeneration(interaction, new_prompt)
+
+    @discord.ui.button(label="Download", style=discord.ButtonStyle.grey, row=1)
+    async def download(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("💾 To download, right-click the image and select **'Save Image'**!", ephemeral=True)
+
 @tree.command(name="recreate", description="Generate an image using AI")
 async def recreate(interaction: discord.Interaction, scene: str):
     try:
@@ -2036,16 +2105,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
         return
 
     try:
-        client_hf = InferenceClient(token=HUGGINGFACE_TOKEN)
-        
-        def generate():
-            # This returns a PIL.Image object
-            img = client_hf.text_to_image(scene, model=HF_MODEL)
-            buf = io.BytesIO()
-            img.save(buf, format="PNG")
-            return buf.getvalue()
-
-        img_data = await asyncio.get_event_loop().run_in_executor(None, generate)
+        img_data = await generate_image_bytes(scene)
         
         tmp = os.path.join(tempfile.gettempdir(), f"recreate_{interaction.id}.png")
         with open(tmp, "wb") as f: 
@@ -2054,7 +2114,10 @@ async def recreate(interaction: discord.Interaction, scene: str):
         file = discord.File(tmp, filename="recreate.png")
         embed = discord.Embed(title="🖼️ AI Generated Image", description=f"**Prompt:** {scene}", color=discord.Color.blurple())
         embed.set_image(url="attachment://recreate.png")
-        await interaction.followup.send(embed=embed, file=file)
+        
+        # Add the UI buttons
+        view = RecreateView(scene, interaction.user.id)
+        await interaction.followup.send(embed=embed, file=file, view=view)
     except Exception as e:
         error_msg = str(e)
         if "401" in error_msg:
