@@ -1071,7 +1071,7 @@ async def wordle(interaction: discord.Interaction):
     view = WordleView(game, interaction.user.id)
 
     embed = discord.Embed(
-        title="🎯 Wordle Game",
+        title=" Wordle Game",
         description=f"Guess a {game.word_len}-letter word! You have **{game.max_guesses}** guesses to get it right!",
         color=discord.Color.orange(),
         timestamp=datetime.now(timezone.utc)
@@ -1267,9 +1267,9 @@ async def baccarat(interaction: discord.Interaction, bet: int, side: app_command
     if game.payout:
         profit = game.payout - bet
         update_balance(interaction.user.id, game.payout)  # since bet already deducted, add back full payout
-        result_note = f"✅ You won ${profit:,}!" if profit > 0 else "🤝 Push"
+        result_note = f" You won ${profit:,}!" if profit > 0 else "🤝 Push"
     else:
-        result_note = f"❌ You lost ${bet:,}."
+        result_note = f" You lost ${bet:,}."
 
     # Build slick UI with gradient-like feel via emojis and clean layout
     embed = game.board_embed()
@@ -1437,7 +1437,7 @@ class CashOutButton(Button):
             item.disabled = True
 
         embed = discord.Embed(
-            title="💰 Cashed Out!",
+            title=" Cashed Out!",
             description=f"You won **${winnings:,}** (Profit: **${profit:,}**)",
             color=discord.Color.gold()
         )
@@ -1480,7 +1480,7 @@ async def mines(interaction: discord.Interaction, bet: int, mines: int = 3):
     mines_games[interaction.user.id] = game
 
     embed = discord.Embed(
-        title="💎 Mines Game",
+        title=" Mines Game",
         description=f"Bet: **${bet:,}** | Mines: **{mines}**\nReveal tiles to increase your multiplier!",
         color=discord.Color.blue()
     )
@@ -1580,7 +1580,7 @@ class TowerButton(Button):
                     item.disabled = True
 
                 embed = discord.Embed(
-                    title="🏆 You conquered the tower!",
+                    title=" You conquered the tower!",
                     description=f"You reached the top and won **${winnings:,}** (Profit: **${profit:,}**)",
                     color=discord.Color.gold(),
                 )
@@ -1592,7 +1592,7 @@ class TowerButton(Button):
             # Advance to next level
             game.next_level()
             embed = discord.Embed(
-                title="🧱 Tower Game",
+                title=" Tower Game",
                 description=f"Level: **{game.level} / {game.max_levels}**\nMultiplier: **{game.multiplier:.2f}x**\nBet: **${game.bet:,}**",
                 color=discord.Color.blue(),
             )
@@ -1604,7 +1604,7 @@ class TowerButton(Button):
 
 class CashOutTowerButton(Button):
     def __init__(self):
-        super().__init__(label="💰 Cash Out", style=discord.ButtonStyle.success)
+        super().__init__(label=" Cash Out", style=discord.ButtonStyle.success)
 
     async def callback(self, interaction: discord.Interaction):
         game = tower_games.get(interaction.user.id)
@@ -1621,7 +1621,7 @@ class CashOutTowerButton(Button):
             item.disabled = True
 
         embed = discord.Embed(
-            title="💰 Cashed Out!",
+            title=" Cashed Out!",
             description=f"You cashed out at Level **{game.level}** and won **${winnings:,}** (Profit: **${profit:,}**)",
             color=discord.Color.gold(),
         )
@@ -1664,7 +1664,7 @@ async def tower(interaction: discord.Interaction, bet: int):
     game.reset_bomb()
 
     embed = discord.Embed(
-        title="🧱 Tower Game",
+        title=" Tower Game",
         description=f"Level: **1 / {game.max_levels}**\nMultiplier: **{game.multiplier:.2f}x**\nBet: **${bet:,}**",
         color=discord.Color.blurple(),
     )
@@ -1679,7 +1679,7 @@ async def tower(interaction: discord.Interaction, bet: int):
 async def cleartower(interaction: discord.Interaction):
     if interaction.user.id in tower_games:
         del tower_games[interaction.user.id]
-        await interaction.response.send_message("✅ Your Tower game has been cleared!", ephemeral=True)
+        await interaction.response.send_message(" Your Tower game has been cleared!", ephemeral=True)
     else:
         await interaction.response.send_message("You don't have an active Tower game.", ephemeral=True)
 
@@ -1695,7 +1695,7 @@ async def leaderboard(interaction: discord.Interaction):
     sorted_players = sorted(balances.items(), key=lambda x: x[1], reverse=True)[:10]
 
     embed = discord.Embed(
-        title="🏆 Casino Leaderboard",
+        title=" Casino Leaderboard",
         description="Top 10 richest players across all games",
         color=discord.Color.gold(),
         timestamp=datetime.now(timezone.utc)
@@ -1988,7 +1988,7 @@ async def emojimosaic(
     # Prepare files/embeds
     files = []
     embed = discord.Embed(
-        title="🧩 Emoji Mosaic",
+        title=" Emoji Mosaic",
         description=f"Size: **{tgt_w}×{tgt_h}**  |  Emojis used: **{len(emoji_palette)}**",
         color=discord.Color.purple(),
         timestamp=datetime.now(timezone.utc),
@@ -2059,7 +2059,7 @@ class RecreateView(discord.ui.View):
                 f.write(img_data)
             
             file = discord.File(tmp, filename="recreate.png")
-            embed = discord.Embed(title="🖼️ AI Generated Image", description=f"**Prompt:** {prompt}", color=discord.Color.blurple())
+            embed = discord.Embed(title=" AI Generated Image", description=f"**Prompt:** {prompt}", color=discord.Color.blurple())
             embed.set_image(url="attachment://recreate.png")
             
             # Create a new view for the new message
@@ -2068,11 +2068,11 @@ class RecreateView(discord.ui.View):
         except Exception as e:
             await interaction.followup.send(f"❌ Failed to regenerate: {str(e)[:100]}", ephemeral=True)
 
-    @discord.ui.button(label="Retry", emoji="🔄", style=discord.ButtonStyle.grey, row=0)
+    @discord.ui.button(label="Retry", style=discord.ButtonStyle.grey, row=0)
     async def retry(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.handle_regeneration(interaction, self.scene)
 
-    @discord.ui.button(label="Retry in different styles", emoji="🎨", style=discord.ButtonStyle.grey, row=0)
+    @discord.ui.button(label="Retry in different styles", style=discord.ButtonStyle.grey, row=0)
     async def retry_styles(self, interaction: discord.Interaction, button: discord.ui.Button):
         styles = ["cyberpunk", "oil painting", "pencil sketch", "anime", "photorealistic", "origami", "pixel art"]
         new_prompt = f"{self.scene}, {random.choice(styles)} style"
@@ -2093,7 +2093,7 @@ class RecreateView(discord.ui.View):
 
     @discord.ui.button(label="Download", style=discord.ButtonStyle.grey, row=1)
     async def download(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("💾 To download, right-click the image and select **'Save Image'**!", ephemeral=True)
+        await interaction.response.send_message(" To download, right-click the image and select **'Save Image'**!", ephemeral=True)
 
 @tree.command(name="recreate", description="Generate an image using AI")
 async def recreate(interaction: discord.Interaction, scene: str):
@@ -2112,7 +2112,7 @@ async def recreate(interaction: discord.Interaction, scene: str):
             f.write(img_data)
         
         file = discord.File(tmp, filename="recreate.png")
-        embed = discord.Embed(title="🖼️ AI Generated Image", description=f"**Prompt:** {scene}", color=discord.Color.blurple())
+        embed = discord.Embed(title=" AI Generated Image", description=f"**Prompt:** {scene}", color=discord.Color.blurple())
         embed.set_image(url="attachment://recreate.png")
         
         # Add the UI buttons
@@ -2137,7 +2137,7 @@ async def resync(interaction: discord.Interaction):
     try:
         await tree.sync(guild=GUILD_OBJECT)
         await interaction.followup.send(
-            "✅ Slash commands have been fully re-synced for this server.\nIf you don't see updates yet, restart Discord (Ctrl+R).",
+            "Slash commands have been fully re-synced for this server.\nIf you don't see updates yet, restart Discord (Ctrl+R).",
             ephemeral=True,
         )
     except Exception as e:
@@ -2155,7 +2155,7 @@ async def cleanupglobals(interaction: discord.Interaction):
         await tree.sync(guild=None)
         await tree.sync(guild=GUILD_OBJECT)
         await interaction.followup.send(
-            "✅ Cleared global commands and re-synced guild commands.",
+            "Cleared global commands and re-synced guild commands.",
             ephemeral=True,
         )
     except Exception as e:
@@ -2260,7 +2260,7 @@ async def kick_member(
     try:
         await member.kick(reason=reason or f"Kicked by {interaction.user}")
         embed = make_mod_embed(
-            title="👢 Member Kicked",
+            title="Member Kicked",
             color=discord.Color.orange(),
             user=member,
             moderator=interaction.user,
@@ -2318,7 +2318,7 @@ async def timeout_member(
     try:
         await member.timeout(until, reason=reason or f"Timed out by {interaction.user}")
         embed = make_mod_embed(
-            title="⏳ Member Timed Out",
+            title="Member Timed Out",
             color=discord.Color.blurple(),
             user=member,
             moderator=interaction.user,
@@ -2369,7 +2369,7 @@ async def untimeout_member(
         # Clear the timeout
         await member.timeout(None, reason=reason or f"Timeout cleared by {interaction.user}")
         embed = make_mod_embed(
-            title="✅ Timeout Removed",
+            title="Timeout Removed",
             color=discord.Color.green(),
             user=member,
             moderator=interaction.user,
@@ -2407,7 +2407,7 @@ async def unban_user(
     try:
         await interaction.guild.unban(user, reason=reason or f"Unbanned by {interaction.user}")
         embed = make_mod_embed(
-            title="✅ User Unbanned",
+            title="User Unbanned",
             color=discord.Color.green(),
             user=user,
             moderator=interaction.user,
@@ -2425,9 +2425,9 @@ async def unban_user(
 @client.event
 async def on_ready():
     try:
-        print(f"✅ Logged in as {client.user} (ID: {client.user.id})")
+        print(f"Logged in as {client.user} (ID: {client.user.id})")
     except Exception:
-        print("✅ Logged in")
+        print("Logged in")
 
     # Set custom "Now Playing" status
     await client.change_presence(activity=discord.Game(name="Casino Games | /balance"))
@@ -2438,7 +2438,7 @@ async def on_ready():
             print("🧹 Clearing GLOBAL application commands...")
             tree.clear_commands(guild=None)
             await tree.sync(guild=None)
-            print("✅ Global commands cleared.")
+            print("Global commands cleared.")
         except Exception as e:
             print(f"❌ Failed to clear global commands: {e}")
 
@@ -2449,7 +2449,7 @@ async def on_ready():
             print("⚡ Global slash commands synced (propagation can take up to ~1 hour)")
             # Temporary dual-sync: also sync test guild for instant updates
             await tree.sync(guild=GUILD_OBJECT)
-            print(f"⚡ Guild {GUILD_ID} slash commands synced instantly for testing")
+            print(f"Guild {GUILD_ID} slash commands synced instantly for testing")
         except Exception as e:
             print(f"❌ Sync failed: {e}")
     else:
@@ -2457,7 +2457,7 @@ async def on_ready():
         try:
             # Fetch existing guild commands so the bot can route interactions without altering remote state
             await tree.fetch_commands()
-            print("🔎 Fetched existing global commands for routing.")
+            print("Fetched existing global commands for routing.")
         except Exception as e:
             print(f"❌ Failed to fetch guild commands: {e}")
 
