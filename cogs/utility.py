@@ -33,8 +33,8 @@ class Utility(commands.Cog):
                 timestamp=datetime.now(timezone.utc)
             )
             embed.set_thumbnail(url=member.display_avatar.url)
-            embed.add_field(name="🕒 Joined At", value=f"`{joined_time}`", inline=False)
-            embed.set_footer(text="Enjoy your stay 🚀")
+            embed.add_field(name="Joined At", value=f"`{joined_time}`", inline=False)
+            embed.set_footer(text="Enjoy your stay")
             await member.send(embed=embed)
         except discord.Forbidden:
             pass
@@ -74,9 +74,9 @@ class Utility(commands.Cog):
         else:
             color, status = discord.Color.red(), "High Latency"
 
-        embed = discord.Embed(title="🏓 Pong!", color=color, timestamp=datetime.now(timezone.utc))
-        embed.add_field(name="📡 Latency", value=f"**{latency}ms**", inline=True)
-        embed.add_field(name="🔌 Status", value=f"**{status}**", inline=True)
+        embed = discord.Embed(title="Pong!", color=color, timestamp=datetime.now(timezone.utc))
+        embed.add_field(name="Latency", value=f"**{latency}ms**", inline=True)
+        embed.add_field(name="Status", value=f"**{status}**", inline=True)
         embed.set_footer(text=f"Requested by {interaction.user}", icon_url=interaction.user.display_avatar.url)
         await interaction.response.send_message(embed=embed)
 
@@ -87,12 +87,12 @@ class Utility(commands.Cog):
             member = cast(discord.Member, interaction.user)
         embed = discord.Embed(title=f"User Info - {member}", color=discord.Color.blurple(), timestamp=datetime.now(timezone.utc))
         embed.set_thumbnail(url=member.display_avatar.url)
-        embed.add_field(name="🪪 ID", value=member.id, inline=False)
-        embed.add_field(name="📛 Username", value=member.name, inline=False)
-        embed.add_field(name="🎨 Nickname", value=member.display_name, inline=False)
-        embed.add_field(name="📅 Joined Server", value=member.joined_at.strftime("%Y-%m-%d %H:%M:%S") if member.joined_at else "Unknown", inline=False)
-        embed.add_field(name="🕰️ Account Created", value=member.created_at.strftime("%Y-%m-%d %H:%M:%S"), inline=False)
-        embed.add_field(name="🎭 Roles", value=" ".join([role.mention for role in member.roles[1:]]) or "No roles", inline=False)
+        embed.add_field(name="ID", value=member.id, inline=False)
+        embed.add_field(name="Username", value=member.name, inline=False)
+        embed.add_field(name="Nickname", value=member.display_name, inline=False)
+        embed.add_field(name="Joined Server", value=member.joined_at.strftime("%Y-%m-%d %H:%M:%S") if member.joined_at else "Unknown", inline=False)
+        embed.add_field(name="Account Created", value=member.created_at.strftime("%Y-%m-%d %H:%M:%S"), inline=False)
+        embed.add_field(name="Roles", value=" ".join([role.mention for role in member.roles[1:]]) or "No roles", inline=False)
         embed.set_footer(text=f"Requested by {interaction.user}", icon_url=interaction.user.display_avatar.url)
         await interaction.response.send_message(embed=embed)
 
@@ -124,3 +124,4 @@ class Utility(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Utility(bot))
+
