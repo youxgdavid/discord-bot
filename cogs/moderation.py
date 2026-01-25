@@ -3,6 +3,42 @@ from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timezone, timedelta
 from typing import Optional
+import json
+import aiohttp
+import os
+
+AI_MOD_CONFIG_FILE = "ai_mod_config.json"
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+def load_ai_mod_configs():
+    try:
+        with open(AI_MOD_CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+def save_ai_mod_configs(configs):
+    with open(AI_MOD_CONFIG_FILE, 'w') as f:
+        json.dump(configs, f, indent=2)
+
+async def check_moderation(text: str) -> Optional[dict]:
+    """Check text against OpenAI Moderation API."""
+    if not OPENAI_API_KEY:
+        return None
+    
+    url = "https://api.openai.com/v1/moderations"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {OPENAI_API_KEY}"
+    }
+    data = {"input": text}
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, headers=headers, json=data) as resp:
+            if resp.status == 200:
+                result = await resp.json()
+                return result["results"][0]
+            return None
 
 def make_mod_embed(title, color, *, user, moderator, reason=None, extra_fields=None):
     """Build a consistent moderation embed UI."""
@@ -127,6 +163,69 @@ class Moderation(commands.Cog):
             await interaction.followup.send(f"✅ Deleted **{len(deleted)}** messages.", ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ Purge failed: {e}", ephemeral=True)
+
+    ai_mod = app_commands.Group(name="ai_mod", description="AI-powered moderation settings")
+
+    @ai_mod.command(name="toggle", description="Toggle AI moderation for this server")
+    @app_commands.guild_only()
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def ai_mod_toggle(self, interaction: discord.Interaction, enabled: bool):
+        configs = load_ai_mod_configs()
+        configs[str(interaction.guild.id)] = enabled
+        save_ai_mod_configs(configs)
+        status = "enabled" if enabled else "disabled"
+        await interaction.response.send_message(f"✅ AI Moderation has been **{status}** for this server.")
+
+    @ai_mod.command(name="status", description="Check AI moderation status")
+    @app_commands.guild_only()
+    async def ai_mod_status(self, interaction: discord.Interaction):
+        configs = load_ai_mod_configs()
+        is_enabled = configs.get(str(interaction.guild.id), False)
+        status = "enabled" if is_enabled else "disabled"
+        
+        embed = discord.Embed(title="🤖 AI Moderation Status", color=discord.Color.blue() if is_enabled else discord.Color.greyple())
+        embed.add_field(name="Status", value=f"Currently **{status}**")
+        embed.add_field(name="API Configured", value="✅ Yes" if OPENAI_API_KEY else "❌ No (Missing API Key)")
+        await interaction.response.send_message(embed=embed)
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.author.bot or not message.guild:
+            return
+        
+        configs = load_ai_mod_configs()
+        if not configs.get(str(message.guild.id), False):
+            return
+
+        # Skip moderation for users with manage_messages permission
+        if message.author.guild_permissions.manage_messages:
+            return
+
+        result = await check_moderation(message.content)
+        if result and result.get("flagged"):
+            categories = [cat for cat, val in result.get("categories", {}).items() if val]
+            reason = f"AI Moderation Flagged: {', '.join(categories)}"
+            
+            try:
+                await message.delete()
+                
+                # Notify in channel
+                embed = discord.Embed(
+                    title="🛡️ AI Moderation Action",
+                    description=f"Message from {message.author.mention} was removed.",
+                    color=discord.Color.red(),
+                    timestamp=datetime.now(timezone.utc)
+                )
+                embed.add_field(name="Reason", value=reason)
+                await message.channel.send(embed=embed, delete_after=10)
+                
+                # Log to DM (optional)
+                try:
+                    await message.author.send(f"⚠️ Your message in **{message.guild.name}** was removed because it triggered our AI moderation filters.\n**Reason:** {reason}")
+                except:
+                    pass
+            except Exception as e:
+                print(f"Error in AI moderation: {e}")
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Moderation(bot))
