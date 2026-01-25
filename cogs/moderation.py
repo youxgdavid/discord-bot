@@ -201,7 +201,13 @@ class Moderation(commands.Cog):
         if message.author.guild_permissions.manage_messages:
             return
 
+        print(f"DEBUG: Scanning message from {message.author}: {message.content[:50]}")
         result = await check_moderation(message.content)
+        if result:
+            print(f"DEBUG: Flagged status: {result.get('flagged')}")
+        else:
+            print("DEBUG: AI Moderation check returned None (API issue?)")
+
         if result and result.get("flagged"):
             categories = [cat for cat, val in result.get("categories", {}).items() if val]
             reason = f"AI Moderation Flagged: {', '.join(categories)}"
