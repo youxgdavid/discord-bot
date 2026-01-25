@@ -79,7 +79,7 @@ class Moderation(commands.Cog):
 
         try:
             await member.ban(reason=reason or f"Banned by {interaction.user}", delete_message_seconds=int(delete_days) * 86400)
-            await interaction.response.send_message(embed=make_mod_embed(title="🔨 Member Banned", color=discord.Color.red(), user=member, moderator=interaction.user, reason=reason, extra_fields=[("Deleted Messages", f"{delete_days} days", True)]))
+            await interaction.response.send_message(embed=make_mod_embed(title="Member Banned", color=discord.Color.red(), user=member, moderator=interaction.user, reason=reason, extra_fields=[("Deleted Messages", f"{delete_days} days", True)]))
         except Exception as e:
             await interaction.response.send_message(f"❌ Ban failed: {e}", ephemeral=True)
 
@@ -160,7 +160,7 @@ class Moderation(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         try:
             deleted = await interaction.channel.purge(limit=amount)
-            await interaction.followup.send(f"✅ Deleted **{len(deleted)}** messages.", ephemeral=True)
+            await interaction.followup.send(f"Deleted **{len(deleted)}** messages.", ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ Purge failed: {e}", ephemeral=True)
 
@@ -183,7 +183,7 @@ class Moderation(commands.Cog):
         is_enabled = configs.get(str(interaction.guild.id), False)
         status = "enabled" if is_enabled else "disabled"
         
-        embed = discord.Embed(title="🤖 AI Moderation Status", color=discord.Color.blue() if is_enabled else discord.Color.greyple())
+        embed = discord.Embed(title="AI Moderation Status", color=discord.Color.blue() if is_enabled else discord.Color.greyple())
         embed.add_field(name="Status", value=f"Currently **{status}**")
         embed.add_field(name="API Configured", value="✅ Yes" if OPENAI_API_KEY else "❌ No (Missing API Key)")
         await interaction.response.send_message(embed=embed)
@@ -235,3 +235,4 @@ class Moderation(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Moderation(bot))
+
