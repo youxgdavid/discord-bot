@@ -1,4 +1,4 @@
-#My Discord Bot
+**My Discord Bot**
 
 ![Bot Demo](https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHoxZ28xa2RlaHBra3NrOWRyZjQ3NWtjc3gycmdmbHR4YW1kbWNrZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Kb3VjUXG7pHLPsTUbK/giphy.gif)
 
@@ -8,19 +8,19 @@ Currently in **development**— please bear with any bugs!
 https://discord.com/oauth2/authorize?client_id=1427215701701169264&permissions=8&integration_type=0&scope=bot
  --
 
-#Discord Casino & Game Bot
+**Discord Casino & Game Bot**
 
 Your all-in-one **Discord entertainment bot** — complete with casino-style games, Wordle, a global economy system, and now **AI image generation** using **Hugging Face Stable Diffusion** 🎨
 
 ---
 
-##Bot Status
+**Bot Status**
 ![Discord Status](https://img.shields.io/badge/✔-Online-brightgreen) |
 ![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)
 ![Discord.py](https://img.shields.io/badge/Discord.py-2.3+-5865F2?logo=discord)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-##Connect with Me
+**Connect with Me**
 
 [![Discord](https://img.shields.io/badge/Discord-Message%20Me-7289DA?logo=discord&logoColor=white)](https://discord.com/users/868504267927986197)
 
@@ -28,9 +28,8 @@ Your all-in-one **Discord entertainment bot** — complete with casino-style gam
 
 ---
 
-## Features
 
-###Games & Casino
+**Games & Casino**
 
 | Game | Description | Status |
 |------|--------------|--------|
@@ -42,7 +41,7 @@ Your all-in-one **Discord entertainment bot** — complete with casino-style gam
 
 ---
 
-###Utility & Fun Commands
+**Utility & Fun Commands**
 
 | Command | Description |
 |---------|-------------|
@@ -69,7 +68,7 @@ Your all-in-one **Discord entertainment bot** — complete with casino-style gam
 
 ---
 
-### Economy System
+**Economy System**
 
 - **Integrated currency system** shared across all games  
 - Start with `$10,000` in your balance  
@@ -79,7 +78,7 @@ Your all-in-one **Discord entertainment bot** — complete with casino-style gam
 
 ---
 
-### AI Image Generation
+**AI Image Generation**
 
 | Feature | Description |
 |----------|--------------|
@@ -87,6 +86,7 @@ Your all-in-one **Discord entertainment bot** — complete with casino-style gam
 | Example | `/recreate scene: draw my minecraft base as an ancient ruin` |
 | API | Uses the free Hugging Face inference API (`stabilityai/stable-diffusion-xl-base-1.0`) |
 | Env Variable | `HUGGINGFACE_TOKEN` required for authentication |
+
 
 
 
