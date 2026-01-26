@@ -28,7 +28,7 @@ def keep_alive():
 keep_alive()
 
 # Discord client and intents
-BOT_VERSION = "2.3.1-VOICE-REMOVED-COGS"
+BOT_VERSION = "2.3.2-AI-FIX"
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
@@ -41,27 +41,29 @@ class MyBot(commands.Bot):
         self.GUILD_OBJECT = discord.Object(id=self.GUILD_ID)
 
     async def setup_hook(self):
+        print("--- STARTING COG LOAD ---", flush=True)
         # Load all cogs
         for filename in os.listdir('./cogs'):
             if filename.endswith('.py'):
                 try:
                     await self.load_extension(f'cogs.{filename[:-3]}')
-                    print(f"✅ Loaded extension: {filename}")
+                    print(f"✅ Loaded extension: {filename}", flush=True)
                 except Exception as e:
-                    print(f"❌ Failed to load extension {filename}: {e}")
+                    print(f"❌ Failed to load extension {filename}: {e}", flush=True)
+        print("--- COG LOAD COMPLETE ---", flush=True)
 
         # Sync commands
         if os.getenv("SYNC_COMMANDS", "true").lower() == "true":
             try:
                 self.tree.copy_global_to(guild=self.GUILD_OBJECT)
                 await self.tree.sync(guild=self.GUILD_OBJECT)
-                print("⚡ Guild commands synced")
+                print("⚡ Guild commands synced", flush=True)
             except Exception as e:
-                print(f"❌ Sync failed: {e}")
+                print(f"❌ Sync failed: {e}", flush=True)
 
     async def on_ready(self):
-        print(f"✅ VERSION {self.BOT_VERSION} active")
-        print(f"✅ Logged in as {self.user}")
+        print(f"✅ VERSION {self.BOT_VERSION} active", flush=True)
+        print(f"✅ Logged in as {self.user}", flush=True)
         await self.change_presence(activity=discord.Game(name="Casino Games | /balance"))
 
 bot = MyBot()
