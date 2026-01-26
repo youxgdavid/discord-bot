@@ -57,7 +57,7 @@ Your all-in-one **Discord entertainment bot**
 | `/clearmines` | Clear any stuck Mines game |
 | `/tower` | Play the Tower casino game |
 | `/cleartower` | Clear any stuck Tower game |
-| `/recreate` | Generate an AI image from text (powered by Hugging Face 🎨) |
+| `/recreate` | Generate an AI image from text |
 | `/Ban` | Bans user from server (Includes Unban) |
  `/Timeout` | Timeout user from server (Includes untimeout) |
 | `/Kick` | Kicks user from server |
@@ -85,6 +85,7 @@ Your all-in-one **Discord entertainment bot**
 | Example | `/recreate scene: draw my minecraft base as an ancient ruin` |
 | API | Uses the free Hugging Face inference API (`stabilityai/stable-diffusion-xl-base-1.0`) |
 | Env Variable | `HUGGINGFACE_TOKEN` required for authentication |
+
 
 
 
