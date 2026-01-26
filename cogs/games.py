@@ -677,25 +677,8 @@ class Games(commands.Cog):
             del tower_games[interaction.user.id]
             await interaction.response.send_message("Tower cleared!", ephemeral=True)
         else: await interaction.response.send_message("No active game.", ephemeral=True)
-
-    @app_commands.command(name="PIXEL Bot", description="View all available casino games in one place!")
-    async def mee6_games(self, interaction: discord.Interaction):
-        embed = discord.Embed(
-            title="PIXEL Bot Hub",
-            description="Welcome to the casino! Here are all the games you can play to earn (or lose) money.",
-            color=discord.Color.gold(),
-            timestamp=datetime.now(timezone.utc)
-        )
-        
-        embed.add_field(name="Blackjack (`/blackjack`)", value="Classic 21! Beat the dealer to double your bet.", inline=False)
-        embed.add_field(name="Wordle (`/wordle`)", value="Guess the secret word in 5 tries.", inline=False)
-        embed.add_field(name="Baccarat (`/baccarat`)", value="Bet on Player, Banker, or Tie.", inline=False)
-        embed.add_field(name="Mines (`/mines`)", value="Reveal gems and avoid mines to increase your multiplier.", inline=False)
-        embed.add_field(name="Tower (`/tower`)", value="Climb the tower for massive rewards, but don't hit a bomb!", inline=False)
-        
-        embed.set_footer(text=f"Requested by {interaction.user}", icon_url=interaction.user.display_avatar.url)
-        await interaction.response.send_message(embed=embed)
-
-async def setup(bot: commands.Bot):
+            
+        async def setup(bot: commands.Bot):
     await bot.add_cog(Games(bot))
+
 
