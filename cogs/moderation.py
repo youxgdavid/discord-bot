@@ -31,7 +31,7 @@ async def check_moderation(text: str) -> Optional[dict]:
         print("DEBUG: Moderation check failed - Missing HUGGINGFACE_TOKEN", flush=True)
         return None
     
-    url = f"https://api-inference.huggingface.co/models/{HF_MOD_MODEL}"
+    url = f"https://router.huggingface.co/hf-inference/models/{HF_MOD_MODEL}"
     headers = {"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"}
     payload = {"inputs": text}
     
@@ -200,15 +200,17 @@ class Moderation(commands.Cog):
     @app_commands.guild_only()
     @app_commands.checks.has_permissions(manage_guild=True)
     async def ai_mod_toggle(self, interaction: discord.Interaction, enabled: bool):
+        await interaction.response.defer(ephemeral=True)
         configs = load_ai_mod_configs()
         configs[str(interaction.guild.id)] = enabled
         save_ai_mod_configs(configs)
         status = "enabled" if enabled else "disabled"
-        await interaction.response.send_message(f"✅ AI Moderation has been **{status}** for this server.")
+        await interaction.followup.send(f"✅ AI Moderation has been **{status}** for this server.")
 
     @ai_mod.command(name="status", description="Check AI moderation status")
     @app_commands.guild_only()
     async def ai_mod_status(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
         configs = load_ai_mod_configs()
         is_enabled = configs.get(str(interaction.guild.id), False)
         status = "enabled" if is_enabled else "disabled"
@@ -216,7 +218,7 @@ class Moderation(commands.Cog):
         embed = discord.Embed(title="🤖 AI Moderation Status (Free HF Mode)", color=discord.Color.blue() if is_enabled else discord.Color.greyple())
         embed.add_field(name="Status", value=f"Currently **{status}**")
         embed.add_field(name="HF Configured", value="✅ Yes" if HUGGINGFACE_TOKEN else "❌ No (Missing HF Token)")
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
