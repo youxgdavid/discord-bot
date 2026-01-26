@@ -42,7 +42,7 @@ class MyBot(commands.Bot):
 
     async def setup_hook(self):
         print("--- STARTING COG LOAD ---", flush=True)
-        # Load all cogs
+        # Load all cogs for render uploading
         for filename in os.listdir('./cogs'):
             if filename.endswith('.py'):
                 try:
@@ -71,6 +71,6 @@ bot = MyBot()
 if __name__ == "__main__":
     token = os.getenv("DISCORD_TOKEN")
     if not token:
-        print("❌ ERROR: DISCORD_TOKEN not found in environment variables")
+        print("ERROR: DISCORD_TOKEN not found in environment variables")
     else:
         bot.run(token)
