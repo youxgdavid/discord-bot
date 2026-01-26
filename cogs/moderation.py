@@ -201,6 +201,9 @@ class Moderation(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
+        # Early debug to see if listener is active and seeing content
+        print(f"DEBUG: Message from {message.author} (Length: {len(message.content)})")
+
         if message.author.bot or not message.guild:
             return
         
