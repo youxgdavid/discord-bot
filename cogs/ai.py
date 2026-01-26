@@ -9,18 +9,25 @@ import asyncio
 from huggingface_hub import InferenceClient
 
 HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
-HF_MODEL = "stabilityai/stable-diffusion-xl-base-1.0"
+HF_IMAGE_MODEL = "stabilityai/stable-diffusion-xl-base-1.0"
+HF_TEXT_MODEL = "mistralai/Mistral-7B-Instruct-v0.2"
 
 async def generate_image_bytes(scene: str):
     client_hf = InferenceClient(token=HUGGINGFACE_TOKEN)
     def generate():
-        img = client_hf.text_to_image(scene, model=HF_MODEL)
+        img = client_hf.text_to_image(scene, model=HF_IMAGE_MODEL)
         buf = io.BytesIO()
         img.save(buf, format="PNG")
         return buf.getvalue()
     return await asyncio.get_event_loop().run_in_executor(None, generate)
 
-class RecreateView(discord.ui.View):
+async def generate_text_response(prompt: str):
+    client_hf = InferenceClient(token=HUGGINGFACE_TOKEN)
+    def generate():
+        return client_hf.text_generation(prompt, model=HF_TEXT_MODEL, max_new_tokens=250)
+    return await asyncio.get_event_loop().run_in_executor(None, generate)
+
+class ImagineView(discord.ui.View):
     def __init__(self, scene: str, user_id: int):
         super().__init__(timeout=180)
         self.scene = scene
@@ -33,12 +40,12 @@ class RecreateView(discord.ui.View):
         except: return
         try:
             img_data = await generate_image_bytes(prompt)
-            tmp = os.path.join(tempfile.gettempdir(), f"recreate_{interaction.id}.png")
+            tmp = os.path.join(tempfile.gettempdir(), f"imagine_{interaction.id}.png")
             with open(tmp, "wb") as f: f.write(img_data)
-            file = discord.File(tmp, filename="recreate.png")
-            embed = discord.Embed(title=" AI Generated Image", description=f"**Prompt:** {prompt}", color=discord.Color.blurple())
-            embed.set_image(url="attachment://recreate.png")
-            await interaction.followup.send(embed=embed, file=file, view=RecreateView(prompt, self.user_id))
+            file = discord.File(tmp, filename="imagine.png")
+            embed = discord.Embed(title="🎨 AI Generated Image", description=f"**Prompt:** {prompt}", color=discord.Color.blurple())
+            embed.set_image(url="attachment://imagine.png")
+            await interaction.followup.send(embed=embed, file=file, view=ImagineView(prompt, self.user_id))
         except Exception as e:
             await interaction.followup.send(f"❌ Failed: {str(e)[:100]}", ephemeral=True)
 
@@ -62,32 +69,61 @@ class RecreateView(discord.ui.View):
 
     @discord.ui.button(label="Download", style=discord.ButtonStyle.grey, row=1)
     async def download(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message(" To download, right-click the image and select **'Save Image'**!", ephemeral=True)
+        await interaction.response.send_message("📥 To download, right-click the image and select **'Save Image'**!", ephemeral=True)
 
 class AI(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @app_commands.command(name="recreate", description="Generate an image using AI")
-    async def recreate(self, interaction: discord.Interaction, scene: str):
+    @app_commands.command(name="imagine", description="Generate an image using AI")
+    async def imagine(self, interaction: discord.Interaction, prompt: str):
         try: await interaction.response.defer(thinking=True)
         except: return
         if not HUGGINGFACE_TOKEN:
             return await interaction.followup.send("❌ Missing HF Token.", ephemeral=True)
         try:
-            img_data = await generate_image_bytes(scene)
-            tmp = os.path.join(tempfile.gettempdir(), f"recreate_{interaction.id}.png")
+            img_data = await generate_image_bytes(prompt)
+            tmp = os.path.join(tempfile.gettempdir(), f"imagine_{interaction.id}.png")
             with open(tmp, "wb") as f: f.write(img_data)
-            file = discord.File(tmp, filename="recreate.png")
-            embed = discord.Embed(title=" AI Generated Image", description=f"**Prompt:** {scene}", color=discord.Color.blurple())
-            embed.set_image(url="attachment://recreate.png")
-            await interaction.followup.send(embed=embed, file=file, view=RecreateView(scene, interaction.user.id))
+            file = discord.File(tmp, filename="imagine.png")
+            embed = discord.Embed(title="🎨 AI Generated Image", description=f"**Prompt:** {prompt}", color=discord.Color.blurple())
+            embed.set_image(url="attachment://imagine.png")
+            await interaction.followup.send(embed=embed, file=file, view=ImagineView(prompt, interaction.user.id))
         except Exception as e:
             error_msg = str(e)
             if "401" in error_msg: await interaction.followup.send("❌ Invalid HF Token.")
             elif "402" in error_msg: await interaction.followup.send("❌ Paid limit reached.")
             elif "429" in error_msg: await interaction.followup.send("❌ Too many requests.")
             else: await interaction.followup.send(f"❌ Failed: {error_msg[:100]}")
+
+    @app_commands.command(name="write", description="Generate text using AI")
+    async def write(self, interaction: discord.Interaction, prompt: str):
+        try: await interaction.response.defer(thinking=True)
+        except: return
+        if not HUGGINGFACE_TOKEN:
+            return await interaction.followup.send("❌ Missing HF Token.", ephemeral=True)
+        try:
+            response = await generate_text_response(prompt)
+            embed = discord.Embed(title="✍️ AI Writer", color=discord.Color.blue())
+            embed.add_field(name="Prompt", value=prompt[:1024], inline=False)
+            embed.add_field(name="Response", value=response[:1024], inline=False)
+            await interaction.followup.send(embed=embed)
+        except Exception as e:
+            await interaction.followup.send(f"❌ Failed to generate text: {str(e)[:100]}")
+
+    @app_commands.command(name="characters", description="View available AI characters and personas")
+    async def characters(self, interaction: discord.Interaction):
+        embed = discord.Embed(
+            title="🎭 AI Personas & Characters",
+            description="You can ask me to write in different styles or as different characters using `/write`!",
+            color=discord.Color.purple()
+        )
+        embed.add_field(name="🤖 Default Assistant", value="Helpful, polite, and concise.", inline=False)
+        embed.add_field(name="🏴‍☠️ Pirate", value="Arrr! I'll talk like a swashbuckler if ye ask me to!", inline=False)
+        embed.add_field(name="📜 Poet", value="I shall weave words of beauty and grace.", inline=False)
+        embed.add_field(name="🤵 Professional", value="Formal and business-oriented responses.", inline=False)
+        embed.set_footer(text="Try: /write Write a short story about a space cat in a pirate style")
+        await interaction.response.send_message(embed=embed)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(AI(bot))
