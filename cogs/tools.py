@@ -71,7 +71,7 @@ class Tools(commands.Cog):
             async for msg in interaction.channel.history(limit=1000, after=window_start, oldest_first=True):
                 messages.append(msg)
         except Exception as e:
-            return await interaction.followup.send(f"❌ Failed to read history: {e}", ephemeral=True)
+            return await interaction.followup.send(f"Failed to read history: {e}", ephemeral=True)
         if not messages:
             return await interaction.followup.send("No messages in selected window.", ephemeral=True)
         
@@ -87,11 +87,11 @@ class Tools(commands.Cog):
                 ref = m.reference.resolved
                 lines.append(f"  ↩ reply to {getattr(ref.author, 'display_name', 'unknown')}: {(ref.clean_content or '')[:80]}")
             if include_attachments and m.attachments:
-                for a in m.attachments: lines.append(f"  📎 attachment: {a.filename} <{a.url}>")
+                for a in m.attachments: lines.append(f"attachment: {a.filename} <{a.url}>")
         
         transcript = "\n".join(lines)
         file = discord.File(io.BytesIO(transcript.encode('utf-8')), filename=filename)
-        embed = discord.Embed(title=f"🎬 Clip Saved: {title}", description="A transcript of recent messages has been attached.", color=discord.Color.blurple(), timestamp=datetime.now(timezone.utc))
+        embed = discord.Embed(title=f"Clip Saved: {title}", description="A transcript of recent messages has been attached.", color=discord.Color.blurple(), timestamp=datetime.now(timezone.utc))
         embed.add_field(name="Channel", value=interaction.channel.mention, inline=True).add_field(name="Duration", value=f"{seconds}s", inline=True).add_field(name="Messages", value=str(len(messages)), inline=True)
         await interaction.followup.send(embed=embed, file=file)
 
@@ -101,9 +101,9 @@ class Tools(commands.Cog):
     async def emojimosaic(self, interaction: discord.Interaction, image: discord.Attachment, width: app_commands.Range[int, 10, 60] = 30, theme: app_commands.Choice[str] = None, preview: bool = True):
         await interaction.response.defer(thinking=True)
         if not image.content_type or not image.content_type.startswith('image/'):
-            return await interaction.followup.send("❌ Attach valid image.", ephemeral=True)
+            return await interaction.followup.send("Attach valid image.", ephemeral=True)
         try: from PIL import Image, ImageDraw, ImageResampling
-        except: return await interaction.followup.send("❌ Pillow not installed.", ephemeral=True)
+        except: return await interaction.followup.send("Pillow not installed.", ephemeral=True)
         
         try:
             src = Image.open(io.BytesIO(await image.read())).convert('RGB')
@@ -158,7 +158,8 @@ class Tools(commands.Cog):
             
             await interaction.followup.send(embed=embed, files=files)
         except Exception as e:
-            await interaction.followup.send(f"❌ Failed: {e}", ephemeral=True)
+            await interaction.followup.send(f"Failed: {e}", ephemeral=True)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Tools(bot))
+
