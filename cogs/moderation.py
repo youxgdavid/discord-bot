@@ -11,10 +11,13 @@ AI_MOD_CONFIG_FILE = "ai_mod_config.json"
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 def load_ai_mod_configs():
+    if not os.path.exists(AI_MOD_CONFIG_FILE):
+        return {}
     try:
         with open(AI_MOD_CONFIG_FILE, 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
+            data = json.load(f)
+            return data if isinstance(data, dict) else {}
+    except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
 def save_ai_mod_configs(configs):
@@ -24,6 +27,7 @@ def save_ai_mod_configs(configs):
 async def check_moderation(text: str) -> Optional[dict]:
     """Check text against OpenAI Moderation API."""
     if not OPENAI_API_KEY:
+        print("DEBUG: Moderation check failed - Missing OPENAI_API_KEY")
         return None
     
     url = "https://api.openai.com/v1/moderations"
@@ -33,12 +37,19 @@ async def check_moderation(text: str) -> Optional[dict]:
     }
     data = {"input": text}
     
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, headers=headers, json=data) as resp:
-            if resp.status == 200:
-                result = await resp.json()
-                return result["results"][0]
-            return None
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, headers=headers, json=data, timeout=10) as resp:
+                if resp.status == 200:
+                    result = await resp.json()
+                    return result["results"][0]
+                else:
+                    error_text = await resp.text()
+                    print(f"DEBUG: OpenAI API Error ({resp.status}): {error_text}")
+                    return None
+    except Exception as e:
+        print(f"DEBUG: Exception during OpenAI moderation check: {e}")
+        return None
 
 def make_mod_embed(title, color, *, user, moderator, reason=None, extra_fields=None):
     """Build a consistent moderation embed UI."""
@@ -79,7 +90,7 @@ class Moderation(commands.Cog):
 
         try:
             await member.ban(reason=reason or f"Banned by {interaction.user}", delete_message_seconds=int(delete_days) * 86400)
-            await interaction.response.send_message(embed=make_mod_embed(title="Member Banned", color=discord.Color.red(), user=member, moderator=interaction.user, reason=reason, extra_fields=[("Deleted Messages", f"{delete_days} days", True)]))
+            await interaction.response.send_message(embed=make_mod_embed(title="🔨 Member Banned", color=discord.Color.red(), user=member, moderator=interaction.user, reason=reason, extra_fields=[("Deleted Messages", f"{delete_days} days", True)]))
         except Exception as e:
             await interaction.response.send_message(f"❌ Ban failed: {e}", ephemeral=True)
 
@@ -160,7 +171,7 @@ class Moderation(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         try:
             deleted = await interaction.channel.purge(limit=amount)
-            await interaction.followup.send(f"Deleted **{len(deleted)}** messages.", ephemeral=True)
+            await interaction.followup.send(f"✅ Deleted **{len(deleted)}** messages.", ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ Purge failed: {e}", ephemeral=True)
 
@@ -183,7 +194,7 @@ class Moderation(commands.Cog):
         is_enabled = configs.get(str(interaction.guild.id), False)
         status = "enabled" if is_enabled else "disabled"
         
-        embed = discord.Embed(title="AI Moderation Status", color=discord.Color.blue() if is_enabled else discord.Color.greyple())
+        embed = discord.Embed(title="🤖 AI Moderation Status", color=discord.Color.blue() if is_enabled else discord.Color.greyple())
         embed.add_field(name="Status", value=f"Currently **{status}**")
         embed.add_field(name="API Configured", value="✅ Yes" if OPENAI_API_KEY else "❌ No (Missing API Key)")
         await interaction.response.send_message(embed=embed)
@@ -194,14 +205,15 @@ class Moderation(commands.Cog):
             return
         
         configs = load_ai_mod_configs()
-        if not configs.get(str(message.guild.id), False):
+        guild_id_str = str(message.guild.id)
+        if not configs.get(guild_id_str, False):
             return
 
         # Skip moderation for users with manage_messages permission
         if message.author.guild_permissions.manage_messages:
             return
 
-        print(f"DEBUG: Scanning message from {message.author}: {message.content[:50]}")
+        print(f"DEBUG: AI SCANNING message from {message.author}: {message.content[:50]}")
         result = await check_moderation(message.content)
         if result:
             print(f"DEBUG: Flagged status: {result.get('flagged')}")
@@ -213,6 +225,10 @@ class Moderation(commands.Cog):
             reason = f"AI Moderation Flagged: {', '.join(categories)}"
             
             try:
+                if not message.channel.permissions_for(message.guild.me).manage_messages:
+                    print(f"DEBUG: Cannot delete message - Missing 'Manage Messages' permission in {message.channel.name}")
+                    return
+
                 await message.delete()
                 
                 # Notify in channel
@@ -235,4 +251,3 @@ class Moderation(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Moderation(bot))
-
