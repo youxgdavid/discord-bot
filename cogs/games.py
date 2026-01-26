@@ -214,11 +214,11 @@ class BlackjackView(View):
         player_total = self.game.calculate_hand(self.game.player_hand)
         dealer_total = self.game.calculate_hand(self.game.dealer_hand)
         embed = discord.Embed(title="🎰 Blackjack", description=message, color=discord.Color.gold())
-        embed.add_field(name="💰 Bet Amount", value=f"**${self.game.bet_amount:,}**", inline=True)
-        embed.add_field(name="🎴 Your Hand", value=f"{self.game.hand_to_string(self.game.player_hand)}\n**Total: {player_total}**", inline=False)
+        embed.add_field(name="Bet Amount", value=f"**${self.game.bet_amount:,}**", inline=True)
+        embed.add_field(name="Your Hand", value=f"{self.game.hand_to_string(self.game.player_hand)}\n**Total: {player_total}**", inline=False)
         dealer_display = self.game.hand_to_string(self.game.dealer_hand, hide_first=not self.game_over)
         dealer_score = dealer_total if self.game_over else "?"
-        embed.add_field(name="🎴 Dealer's Hand", value=f"{dealer_display}\n**Total: {dealer_score}**", inline=False)
+        embed.add_field(name="Dealer's Hand", value=f"{dealer_display}\n**Total: {dealer_score}**", inline=False)
         if self.game_over: self.clear_items()
         await interaction.response.edit_message(embed=embed, view=self)
 
@@ -243,7 +243,7 @@ class BlackjackView(View):
     async def dealer_play(self, interaction: discord.Interaction):
         player_total = self.game.calculate_hand(self.game.player_hand)
         if player_total > 21:
-            return await self.update_game(interaction, "💥 **Bust! You went over 21. Dealer wins!**")
+            return await self.update_game(interaction, "**Bust! You went over 21. Dealer wins!**")
         dealer_total = self.game.calculate_hand(self.game.dealer_hand)
         while dealer_total < 17:
             self.game.dealer_hand.append(self.game.deal_card())
@@ -251,16 +251,16 @@ class BlackjackView(View):
         if dealer_total > 21:
             winnings = self.game.bet_amount * 2
             update_balance(self.user_id, winnings)
-            message = f"🎉 **Dealer busts! You win ${winnings:,}!**"
+            message = f"**Dealer busts! You win ${winnings:,}!**"
         elif player_total > dealer_total:
             winnings = self.game.bet_amount * 2
             update_balance(self.user_id, winnings)
-            message = f"🎉 **You win ${winnings:,}!**"
+            message = f"**You win ${winnings:,}!**"
         elif player_total < dealer_total:
-            message = f"😔 **Dealer wins! You lost ${self.game.bet_amount:,}**"
+            message = f"**Dealer wins! You lost ${self.game.bet_amount:,}**"
         else:
             update_balance(self.user_id, self.game.bet_amount)
-            message = f"🤝 **It's a tie! Your bet of ${self.game.bet_amount:,} was returned**"
+            message = f"**It's a tie! Your bet of ${self.game.bet_amount:,} was returned**"
         await self.update_game(interaction, message)
 
 # --- Wordle UI ---
@@ -273,15 +273,15 @@ class WordleView(View):
 
     async def update_display(self, interaction: discord.Interaction, message: str = None):
         embed = discord.Embed(
-            title="🎯 Wordle Game",
+            title="Wordle Game",
             color=discord.Color.green() if self.game.won else discord.Color.blue() if self.game.game_over else discord.Color.orange(),
             timestamp=datetime.now(timezone.utc)
         )
         embed.description = message or f"Guess a {self.game.word_len}-letter word! You have **{self.game.max_guesses - len(self.game.guesses)}** guesses left."
-        embed.add_field(name="Status", value="🎉 **WON!**" if self.game.won else "💀 **GAME OVER**" if self.game.game_over else "🔄 **IN PROGRESS**", inline=True)
+        embed.add_field(name="Status", value="**WON!**" if self.game.won else "**GAME OVER**" if self.game.game_over else "**IN PROGRESS**", inline=True)
         embed.add_field(name="Target Word", value=f"`{self.game.get_display_word()}`", inline=True)
         embed.add_field(name="Your Guesses", value=self.game.get_guesses_display(), inline=False)
-        embed.add_field(name="💡 Letter Hints", value=self.game.get_letter_hints(), inline=False)
+        embed.add_field(name="Letter Hints", value=self.game.get_letter_hints(), inline=False)
         if not self.game.game_over:
             embed.add_field(name="How to Play", value="🟩 = Correct letter, correct position\n🟨 = Correct letter, wrong position\n⬜ = Letter not in word", inline=False)
         embed.set_footer(text=f"Playing as {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
@@ -318,7 +318,7 @@ class WordleGuessModal(discord.ui.Modal):
         guess = self.guess_input.value.strip().upper()
         result, message = self.game.make_guess(guess)
         if result is None:
-            return await interaction.response.send_message(f"❌ {message}", ephemeral=True)
+            return await interaction.response.send_message(f"{message}", ephemeral=True)
         self.view.waiting_for_guess = False
         await self.view.update_display(interaction, message)
 
@@ -330,7 +330,7 @@ class NewWordButton(discord.ui.Button):
             return await interaction.response.send_message("This isn't your game!", ephemeral=True)
         self.view.game.new_word()
         self.view.waiting_for_guess = False
-        await self.view.update_display(interaction, "🎯 New word selected! Start guessing!")
+        await self.view.update_display(interaction, "New word selected! Start guessing!")
 
 class GuessButton(discord.ui.Button):
     def __init__(self):
@@ -421,7 +421,7 @@ class BaccaratGame:
         embed.add_field(name="Your Bet", value=f"{self.side.capitalize()} — ${self.bet:,}", inline=False)
         if self.finished:
             result = "It’s a TIE!" if self.outcome == 'tie' else f"{self.outcome.upper()} wins"
-            embed.description = f"🎴 {result}\n{'Payout: **$' + f'{self.payout:,}' + '**' if self.payout else 'Lost: **$' + f'{self.bet:,}' + '**'}"
+            embed.description = f"{result}\n{'Payout: **$' + f'{self.payout:,}' + '**' if self.payout else 'Lost: **$' + f'{self.bet:,}' + '**'}"
         embed.set_footer(text="Baccarat • 6-deck shoe • Banker commission on wins")
         return embed
 
@@ -482,11 +482,11 @@ class MinesButton(Button):
                 item.disabled = True
             if not is_safe:
                 update_balance(interaction.user.id, -game.bet_amount)
-                await interaction.response.edit_message(embed=discord.Embed(title="💣 BOOM!", description=f"Lost **${game.bet_amount:,}**", color=discord.Color.red()), view=self.view)
+                await interaction.response.edit_message(embed=discord.Embed(title="BOOM!", description=f"Lost **${game.bet_amount:,}**", color=discord.Color.red()), view=self.view)
                 del mines_games[interaction.user.id]
         else:
             potential = int(game.bet_amount * game.multiplier)
-            embed = discord.Embed(title="💎 Mines", description=f"Bet: **${game.bet_amount:,}** | Mines: **{game.num_mines}**", color=discord.Color.green())
+            embed = discord.Embed(title="Mines", description=f"Bet: **${game.bet_amount:,}** | Mines: **{game.num_mines}**", color=discord.Color.green())
             embed.add_field(name="Multiplier", value=f"**{game.multiplier:.2f}x**", inline=True)
             embed.add_field(name="Potential Win", value=f"**${potential:,}**", inline=True)
             embed.add_field(name="Revealed", value=f"**{len(game.revealed)}** / {game.board_size - game.num_mines}", inline=True)
@@ -503,7 +503,7 @@ class MinesView(View):
 
 class CashOutButton(Button):
     def __init__(self):
-        super().__init__(style=discord.ButtonStyle.success, label="💰 Cash Out", row=4)
+        super().__init__(style=discord.ButtonStyle.success, label="Cash Out", row=4)
     async def callback(self, interaction: discord.Interaction):
         game = mines_games.get(interaction.user.id)
         if not game: return await interaction.response.send_message("No active game!", ephemeral=True)
@@ -544,7 +544,7 @@ class TowerButton(Button):
             for item in self.view.children:
                 if isinstance(item, TowerButton):
                     item.disabled, item.style = True, discord.ButtonStyle.danger if item.position == game.bomb_position else discord.ButtonStyle.success
-            embed = discord.Embed(title="💣 BOOM!", description=f"Lost **${game.bet:,}**", color=discord.Color.red())
+            embed = discord.Embed(title="BOOM!", description=f"Lost **${game.bet:,}**", color=discord.Color.red())
             embed.add_field(name="Progress", value=game.progress_bar(), inline=False)
             await interaction.response.edit_message(embed=embed, view=self.view)
             del tower_games[interaction.user.id]
@@ -596,10 +596,10 @@ class Games(commands.Cog):
     @app_commands.command(name="blackjack", description="Play Blackjack with betting!")
     @app_commands.describe(bet="Amount to bet (min 100)")
     async def blackjack(self, interaction: discord.Interaction, bet: int = 100):
-        if bet < 100: return await interaction.response.send_message("❌ Minimum bet is $100!", ephemeral=True)
-        if bet > 10000: return await interaction.response.send_message("❌ Maximum bet is $10,000!", ephemeral=True)
+        if bet < 100: return await interaction.response.send_message("Minimum bet is $100!", ephemeral=True)
+        if bet > 10000: return await interaction.response.send_message("Maximum bet is $10,000!", ephemeral=True)
         if not can_afford(interaction.user.id, bet):
-            return await interaction.response.send_message(f"❌ Can't afford! Balance: ${get_balance(interaction.user.id):,}", ephemeral=True)
+            return await interaction.response.send_message(f"Can't afford! Balance: ${get_balance(interaction.user.id):,}", ephemeral=True)
         update_balance(interaction.user.id, -bet)
         game = BlackjackGame(bet_amount=bet)
         game.start_game()
@@ -607,31 +607,31 @@ class Games(commands.Cog):
         if player_total == 21:
             if dealer_total == 21:
                 update_balance(interaction.user.id, game.bet_amount)
-                description = f"🤝 **Push! Both have Blackjack!**"
+                description = f"**Push! Both have Blackjack!**"
             else:
                 winnings = int(game.bet_amount * 2.5)
                 update_balance(interaction.user.id, winnings)
-                description = f"🎉 **BLACKJACK! You win ${winnings:,}!**"
-            embed = discord.Embed(title="🎰 Blackjack", description=description, color=discord.Color.gold())
-            embed.add_field(name="💰 Bet", value=f"**${game.bet_amount:,}**", inline=True)
-            embed.add_field(name="🎴 Your Hand", value=f"{game.hand_to_string(game.player_hand)}\n**Total: {player_total}**", inline=False)
-            embed.add_field(name="🎴 Dealer's Hand", value=f"{game.hand_to_string(game.dealer_hand)}\n**Total: {dealer_total}**", inline=False)
+                description = f"**BLACKJACK! You win ${winnings:,}!**"
+            embed = discord.Embed(title="Blackjack", description=description, color=discord.Color.gold())
+            embed.add_field(name="Bet", value=f"**${game.bet_amount:,}**", inline=True)
+            embed.add_field(name="Your Hand", value=f"{game.hand_to_string(game.player_hand)}\n**Total: {player_total}**", inline=False)
+            embed.add_field(name="Dealer's Hand", value=f"{game.hand_to_string(game.dealer_hand)}\n**Total: {dealer_total}**", inline=False)
             return await interaction.response.send_message(embed=embed)
-        await interaction.response.send_message(embed=discord.Embed(title="🎰 Blackjack", description="Hit or Stand?").add_field(name="💰 Bet", value=f"${bet:,}").add_field(name="🎴 Your Hand", value=f"{game.hand_to_string(game.player_hand)}\n**Total: {player_total}**").add_field(name="🎴 Dealer's Hand", value=f"{game.hand_to_string(game.dealer_hand, hide_first=True)}"), view=BlackjackView(game, interaction.user.id))
+        await interaction.response.send_message(embed=discord.Embed(title="Blackjack", description="Hit or Stand?").add_field(name="Bet", value=f"${bet:,}").add_field(name="Your Hand", value=f"{game.hand_to_string(game.player_hand)}\n**Total: {player_total}**").add_field(name="Dealer's Hand", value=f"{game.hand_to_string(game.dealer_hand, hide_first=True)}"), view=BlackjackView(game, interaction.user.id))
 
     @app_commands.command(name="wordle", description="Play Wordle!")
     async def wordle(self, interaction: discord.Interaction):
         game = WordleGame()
         embed = discord.Embed(title=" Wordle Game", description=f"Guess a {game.word_len}-letter word!", color=discord.Color.orange(), timestamp=datetime.now(timezone.utc))
-        embed.add_field(name="Status", value="🔄 **IN PROGRESS**", inline=True).add_field(name="Target Word", value=f"`{'?' * game.word_len}`", inline=True).add_field(name="Your Guesses", value="No guesses yet", inline=False).add_field(name="💡 Hints", value="No hints yet", inline=False)
+        embed.add_field(name="Status", value="**IN PROGRESS**", inline=True).add_field(name="Target Word", value=f"`{'?' * game.word_len}`", inline=True).add_field(name="Your Guesses", value="No guesses yet", inline=False).add_field(name="💡 Hints", value="No hints yet", inline=False)
         await interaction.response.send_message(embed=embed, view=WordleView(game, interaction.user.id))
 
     @app_commands.command(name="baccarat", description="Play Baccarat!")
     @app_commands.describe(bet="Amount to bet (min 100)", side="Choose your bet")
     @app_commands.choices(side=[app_commands.Choice(name="Player", value="player"), app_commands.Choice(name="Banker", value="banker"), app_commands.Choice(name="Tie", value="tie")])
     async def baccarat(self, interaction: discord.Interaction, bet: int, side: app_commands.Choice[str]):
-        if bet < 100: return await interaction.response.send_message("❌ Minimum $100!", ephemeral=True)
-        if not can_afford(interaction.user.id, bet): return await interaction.response.send_message("❌ Not enough money!", ephemeral=True)
+        if bet < 100: return await interaction.response.send_message("Minimum $100!", ephemeral=True)
+        if not can_afford(interaction.user.id, bet): return await interaction.response.send_message("Not enough money!", ephemeral=True)
         update_balance(interaction.user.id, -bet)
         game = BaccaratGame(interaction.user.id, bet, side.value)
         if game.payout: update_balance(interaction.user.id, game.payout)
@@ -642,10 +642,10 @@ class Games(commands.Cog):
     @app_commands.command(name="mines", description="Play Mines!")
     @app_commands.describe(bet="Amount to bet", mines="Number of mines (1-10)")
     async def mines(self, interaction: discord.Interaction, bet: int, mines: int = 3):
-        if not (1 <= mines <= 10): return await interaction.response.send_message("❌ Mines: 1-10!", ephemeral=True)
-        if bet < 100: return await interaction.response.send_message("❌ Minimum $100!", ephemeral=True)
-        if not can_afford(interaction.user.id, bet): return await interaction.response.send_message("❌ Not enough money!", ephemeral=True)
-        if interaction.user.id in mines_games: return await interaction.response.send_message("❌ Finish active game!", ephemeral=True)
+        if not (1 <= mines <= 10): return await interaction.response.send_message("Mines: 1-10!", ephemeral=True)
+        if bet < 100: return await interaction.response.send_message("Minimum $100!", ephemeral=True)
+        if not can_afford(interaction.user.id, bet): return await interaction.response.send_message("Not enough money!", ephemeral=True)
+        if interaction.user.id in mines_games: return await interaction.response.send_message("Finish active game!", ephemeral=True)
         game = MinesGame(interaction.user.id, bet, mines)
         mines_games[interaction.user.id] = game
         embed = discord.Embed(title=" Mines Game", description=f"Bet: **${bet:,}** | Mines: **{mines}**", color=discord.Color.blue())
@@ -662,9 +662,9 @@ class Games(commands.Cog):
     @app_commands.command(name="tower", description="Play Tower!")
     @app_commands.describe(bet="Amount to bet")
     async def tower(self, interaction: discord.Interaction, bet: int):
-        if bet < 100: return await interaction.response.send_message("❌ Minimum $100!", ephemeral=True)
-        if not can_afford(interaction.user.id, bet): return await interaction.response.send_message("❌ Not enough money!", ephemeral=True)
-        if interaction.user.id in tower_games: return await interaction.response.send_message("❌ Finish active game!", ephemeral=True)
+        if bet < 100: return await interaction.response.send_message("Minimum $100!", ephemeral=True)
+        if not can_afford(interaction.user.id, bet): return await interaction.response.send_message("Not enough money!", ephemeral=True)
+        if interaction.user.id in tower_games: return await interaction.response.send_message("Finish active game!", ephemeral=True)
         game = TowerGame(interaction.user.id, bet)
         tower_games[interaction.user.id] = game
         embed = discord.Embed(title=" Tower Game", description=f"Level: **1 / 10**\nMultiplier: **1.00x**\nBet: **${bet:,}**", color=discord.Color.blurple())
@@ -678,23 +678,24 @@ class Games(commands.Cog):
             await interaction.response.send_message("Tower cleared!", ephemeral=True)
         else: await interaction.response.send_message("No active game.", ephemeral=True)
 
-    @app_commands.command(name="mee6-games", description="View all available casino games in one place!")
+    @app_commands.command(name="PIXEL Bot", description="View all available casino games in one place!")
     async def mee6_games(self, interaction: discord.Interaction):
         embed = discord.Embed(
-            title="🎮 MEE6-Games Hub",
+            title="PIXEL Bot Hub",
             description="Welcome to the casino! Here are all the games you can play to earn (or lose) money.",
             color=discord.Color.gold(),
             timestamp=datetime.now(timezone.utc)
         )
         
-        embed.add_field(name="🎰 Blackjack (`/blackjack`)", value="Classic 21! Beat the dealer to double your bet.", inline=False)
-        embed.add_field(name="🎯 Wordle (`/wordle`)", value="Guess the secret word in 5 tries.", inline=False)
-        embed.add_field(name="🎴 Baccarat (`/baccarat`)", value="Bet on Player, Banker, or Tie.", inline=False)
-        embed.add_field(name="💣 Mines (`/mines`)", value="Reveal gems and avoid mines to increase your multiplier.", inline=False)
-        embed.add_field(name="🏰 Tower (`/tower`)", value="Climb the tower for massive rewards, but don't hit a bomb!", inline=False)
+        embed.add_field(name="Blackjack (`/blackjack`)", value="Classic 21! Beat the dealer to double your bet.", inline=False)
+        embed.add_field(name="Wordle (`/wordle`)", value="Guess the secret word in 5 tries.", inline=False)
+        embed.add_field(name="Baccarat (`/baccarat`)", value="Bet on Player, Banker, or Tie.", inline=False)
+        embed.add_field(name="Mines (`/mines`)", value="Reveal gems and avoid mines to increase your multiplier.", inline=False)
+        embed.add_field(name="Tower (`/tower`)", value="Climb the tower for massive rewards, but don't hit a bomb!", inline=False)
         
         embed.set_footer(text=f"Requested by {interaction.user}", icon_url=interaction.user.display_avatar.url)
         await interaction.response.send_message(embed=embed)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Games(bot))
+
