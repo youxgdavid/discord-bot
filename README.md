@@ -3,14 +3,13 @@
 ![Bot Demo](https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHoxZ28xa2RlaHBra3NrOWRyZjQ3NWtjc3gycmdmbHR4YW1kbWNrZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Kb3VjUXG7pHLPsTUbK/giphy.gif)
 
 A fun and interactive Discord bot with games, utilities, and a balance system.  
-Currently in **development**— please bear with any bugs!  
 
 https://discord.com/oauth2/authorize?client_id=1427215701701169264&permissions=8&integration_type=0&scope=bot
  --
 
 **Discord Casino & Game Bot**
 
-Your all-in-one **Discord entertainment bot** — complete with casino-style games, Wordle, a global economy system, and now **AI image generation** using **Hugging Face Stable Diffusion** 🎨
+Your all-in-one **Discord entertainment bot**
 
 ---
 
@@ -46,7 +45,7 @@ Your all-in-one **Discord entertainment bot** — complete with casino-style gam
 | Command | Description |
 |---------|-------------|
 | `/ping` | Check bot latency |
-| `/ai_mod toggle` | Automatically detects harful messages|
+| `/ai_mod toggle` | Automatically detects harmful messages|
 | `/Set_fm` | Displays the currect playing track |
 | `/Translate_Setup` | All messages in a channel will be translated to a language by your choice. (11 different unique languages) |
 | `/userinfo` | Display information about a user |
@@ -86,6 +85,7 @@ Your all-in-one **Discord entertainment bot** — complete with casino-style gam
 | Example | `/recreate scene: draw my minecraft base as an ancient ruin` |
 | API | Uses the free Hugging Face inference API (`stabilityai/stable-diffusion-xl-base-1.0`) |
 | Env Variable | `HUGGINGFACE_TOKEN` required for authentication |
+
 
 
 
