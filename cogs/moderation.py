@@ -8,7 +8,8 @@ import aiohttp
 import os
 
 AI_MOD_CONFIG_FILE = "ai_mod_config.json"
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
+HF_MOD_MODEL = "unitary/toxic-bert"
 
 def load_ai_mod_configs():
     if not os.path.exists(AI_MOD_CONFIG_FILE):
@@ -25,30 +26,48 @@ def save_ai_mod_configs(configs):
         json.dump(configs, f, indent=2)
 
 async def check_moderation(text: str) -> Optional[dict]:
-    """Check text against OpenAI Moderation API."""
-    if not OPENAI_API_KEY:
-        print("DEBUG: Moderation check failed - Missing OPENAI_API_KEY", flush=True)
+    """Check text against Hugging Face Toxicity API (Free alternative to OpenAI)."""
+    if not HUGGINGFACE_TOKEN:
+        print("DEBUG: Moderation check failed - Missing HUGGINGFACE_TOKEN", flush=True)
         return None
     
-    url = "https://api.openai.com/v1/moderations"
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {OPENAI_API_KEY}"
-    }
-    data = {"input": text}
+    url = f"https://api-inference.huggingface.co/models/{HF_MOD_MODEL}"
+    headers = {"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"}
+    payload = {"inputs": text}
     
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=data, timeout=10) as resp:
+            async with session.post(url, headers=headers, json=payload, timeout=10) as resp:
                 if resp.status == 200:
-                    result = await resp.json()
-                    return result["results"][0]
+                    results = await resp.json()
+                    # HF returns a list of lists of dicts: [[{"label": "toxic", "score": 0.9}, ...]]
+                    if not results or not isinstance(results, list):
+                        return None
+                    
+                    scores = results[0] if isinstance(results[0], list) else results
+                    flagged = False
+                    categories = {}
+                    
+                    # Mapping HF labels to a similar structure as OpenAI for compatibility
+                    for entry in scores:
+                        label = entry["label"].lower()
+                        score = entry["score"]
+                        # Threshold for flagging (usually > 0.7 for high confidence)
+                        is_flagged = score > 0.7
+                        categories[label] = is_flagged
+                        if is_flagged:
+                            flagged = True
+                    
+                    return {"flagged": flagged, "categories": categories}
+                elif resp.status == 503:
+                    print(f"DEBUG: HF Model is loading (503). Moderation skipped.", flush=True)
+                    return None
                 else:
                     error_text = await resp.text()
-                    print(f"DEBUG: OpenAI API Error ({resp.status}): {error_text}", flush=True)
+                    print(f"DEBUG: Hugging Face API Error ({resp.status}): {error_text}", flush=True)
                     return None
     except Exception as e:
-        print(f"DEBUG: Exception during OpenAI moderation check: {e}", flush=True)
+        print(f"DEBUG: Exception during HF moderation check: {e}", flush=True)
         return None
 
 def make_mod_embed(title, color, *, user, moderator, reason=None, extra_fields=None):
@@ -194,9 +213,9 @@ class Moderation(commands.Cog):
         is_enabled = configs.get(str(interaction.guild.id), False)
         status = "enabled" if is_enabled else "disabled"
         
-        embed = discord.Embed(title="🤖 AI Moderation Status", color=discord.Color.blue() if is_enabled else discord.Color.greyple())
+        embed = discord.Embed(title="🤖 AI Moderation Status (Free HF Mode)", color=discord.Color.blue() if is_enabled else discord.Color.greyple())
         embed.add_field(name="Status", value=f"Currently **{status}**")
-        embed.add_field(name="API Configured", value="✅ Yes" if OPENAI_API_KEY else "❌ No (Missing API Key)")
+        embed.add_field(name="HF Configured", value="✅ Yes" if HUGGINGFACE_TOKEN else "❌ No (Missing HF Token)")
         await interaction.response.send_message(embed=embed)
 
     @commands.Cog.listener()
