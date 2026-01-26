@@ -63,6 +63,7 @@ Your all-in-one **Discord entertainment bot**
 | `/Kick` | Kicks user from server |
 | `/Clip That` | Clips last seconds of a chat into a clean log file |
 | `/Emoji Mosaic` | Convert a image into a emoji mosaic using this server's emojis |
+| `/Purge` | Deletes messages instantly (1-100) |
 | `/Resync` | Force  resync slash coommands |
 
 ---
@@ -85,6 +86,7 @@ Your all-in-one **Discord entertainment bot**
 | Example | `/recreate scene: draw my minecraft base as an ancient ruin` |
 | API | Uses the free Hugging Face inference API (`stabilityai/stable-diffusion-xl-base-1.0`) |
 | Env Variable | `HUGGINGFACE_TOKEN` required for authentication |
+
 
 
 
