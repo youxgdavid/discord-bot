@@ -95,13 +95,13 @@ class Moderation(commands.Cog):
     @app_commands.checks.has_permissions(ban_members=True)
     async def ban_member(self, interaction: discord.Interaction, member: discord.Member, reason: Optional[str] = None, delete_days: app_commands.Range[int, 0, 7] = 0):
         if member.id == interaction.user.id:
-            return await interaction.response.send_message("❌ You cannot ban yourself.", ephemeral=True)
+            return await interaction.response.send_message("You cannot ban yourself.", ephemeral=True)
         if interaction.guild.owner_id == member.id:
-            return await interaction.response.send_message("❌ You cannot ban the server owner.", ephemeral=True)
+            return await interaction.response.send_message("You cannot ban the server owner.", ephemeral=True)
         if interaction.user != interaction.guild.owner and interaction.user.top_role <= member.top_role:
-            return await interaction.response.send_message("❌ You cannot ban a member with an equal or higher role.", ephemeral=True)
+            return await interaction.response.send_message("You cannot ban a member with an equal or higher role.", ephemeral=True)
         if interaction.guild.me.top_role <= member.top_role:
-            return await interaction.response.send_message("❌ I cannot ban that member due to role hierarchy.", ephemeral=True)
+            return await interaction.response.send_message("I cannot ban that member due to role hierarchy.", ephemeral=True)
 
         dm_embed = make_mod_embed(title=f"You have been banned from {interaction.guild.name}", color=discord.Color.red(), user=member, moderator=interaction.user, reason=reason)
         try: await member.send(embed=dm_embed)
@@ -119,13 +119,13 @@ class Moderation(commands.Cog):
     @app_commands.checks.has_permissions(kick_members=True)
     async def kick_member(self, interaction: discord.Interaction, member: discord.Member, reason: Optional[str] = None):
         if member.id == interaction.user.id:
-            return await interaction.response.send_message("❌ You cannot kick yourself.", ephemeral=True)
+            return await interaction.response.send_message("You cannot kick yourself.", ephemeral=True)
         if interaction.guild.owner_id == member.id:
-            return await interaction.response.send_message("❌ You cannot kick the server owner.", ephemeral=True)
+            return await interaction.response.send_message("You cannot kick the server owner.", ephemeral=True)
         if interaction.user != interaction.guild.owner and interaction.user.top_role <= member.top_role:
-            return await interaction.response.send_message("❌ You cannot kick a member with an equal or higher role.", ephemeral=True)
+            return await interaction.response.send_message("You cannot kick a member with an equal or higher role.", ephemeral=True)
         if interaction.guild.me.top_role <= member.top_role:
-            return await interaction.response.send_message("❌ I cannot kick that member due to role hierarchy.", ephemeral=True)
+            return await interaction.response.send_message("I cannot kick that member due to role hierarchy.", ephemeral=True)
 
         dm_embed = make_mod_embed(title=f"You have been kicked from {interaction.guild.name}", color=discord.Color.orange(), user=member, moderator=interaction.user, reason=reason)
         try: await member.send(embed=dm_embed)
@@ -135,7 +135,7 @@ class Moderation(commands.Cog):
             await member.kick(reason=reason or f"Kicked by {interaction.user}")
             await interaction.response.send_message(embed=make_mod_embed(title="Member Kicked", color=discord.Color.orange(), user=member, moderator=interaction.user, reason=reason))
         except Exception as e:
-            await interaction.response.send_message(f"❌ Kick failed: {e}", ephemeral=True)
+            await interaction.response.send_message(f"Kick failed: {e}", ephemeral=True)
 
     @app_commands.command(name="timeout", description="Timeout a member for a duration (1-40320 minutes)")
     @app_commands.guild_only()
@@ -143,13 +143,13 @@ class Moderation(commands.Cog):
     @app_commands.checks.has_permissions(moderate_members=True)
     async def timeout_member(self, interaction: discord.Interaction, member: discord.Member, minutes: app_commands.Range[int, 1, 40320], reason: Optional[str] = None):
         if member.id == interaction.user.id:
-            return await interaction.response.send_message("❌ You cannot timeout yourself.", ephemeral=True)
+            return await interaction.response.send_message("You cannot timeout yourself.", ephemeral=True)
         if interaction.guild.owner_id == member.id:
-            return await interaction.response.send_message("❌ You cannot timeout the server owner.", ephemeral=True)
+            return await interaction.response.send_message("You cannot timeout the server owner.", ephemeral=True)
         if interaction.user != interaction.guild.owner and interaction.user.top_role <= member.top_role:
-            return await interaction.response.send_message("❌ You cannot timeout a member with an equal or higher role.", ephemeral=True)
+            return await interaction.response.send_message("You cannot timeout a member with an equal or higher role.", ephemeral=True)
         if interaction.guild.me.top_role <= member.top_role:
-            return await interaction.response.send_message("❌ I cannot timeout that member due to role hierarchy.", ephemeral=True)
+            return await interaction.response.send_message("I cannot timeout that member due to role hierarchy.", ephemeral=True)
 
         until = datetime.now(timezone.utc) + timedelta(minutes=int(minutes))
         dm_embed = make_mod_embed(title=f"You have been timed out in {interaction.guild.name}", color=discord.Color.blurple(), user=member, moderator=interaction.user, reason=reason, extra_fields=[("Duration", f"{int(minutes)} minute(s)", True)])
@@ -160,7 +160,7 @@ class Moderation(commands.Cog):
             await member.timeout(until, reason=reason or f"Timed out by {interaction.user}")
             await interaction.response.send_message(embed=make_mod_embed(title="Member Timed Out", color=discord.Color.blurple(), user=member, moderator=interaction.user, reason=reason, extra_fields=[("Duration", f"{int(minutes)} minute(s)", True)]))
         except Exception as e:
-            await interaction.response.send_message(f"❌ Timeout failed: {e}", ephemeral=True)
+            await interaction.response.send_message(f"Timeout failed: {e}", ephemeral=True)
 
     @app_commands.command(name="untimeout", description="Remove timeout from a member")
     @app_commands.guild_only()
@@ -168,9 +168,9 @@ class Moderation(commands.Cog):
     @app_commands.checks.has_permissions(moderate_members=True)
     async def untimeout_member(self, interaction: discord.Interaction, member: discord.Member, reason: Optional[str] = None):
         if interaction.user != interaction.guild.owner and interaction.user.top_role <= member.top_role:
-            return await interaction.response.send_message("❌ You cannot modify a member with an equal or higher role.", ephemeral=True)
+            return await interaction.response.send_message("You cannot modify a member with an equal or higher role.", ephemeral=True)
         if interaction.guild.me.top_role <= member.top_role:
-            return await interaction.response.send_message("❌ I cannot modify that member due to role hierarchy.", ephemeral=True)
+            return await interaction.response.send_message("I cannot modify that member due to role hierarchy.", ephemeral=True)
 
         dm_embed = make_mod_embed(title=f"Your timeout has been lifted in {interaction.guild.name}", color=discord.Color.green(), user=member, moderator=interaction.user, reason=reason)
         try: await member.send(embed=dm_embed)
@@ -180,7 +180,7 @@ class Moderation(commands.Cog):
             await member.timeout(None, reason=reason or f"Timeout cleared by {interaction.user}")
             await interaction.response.send_message(embed=make_mod_embed(title="Timeout Lifted", color=discord.Color.green(), user=member, moderator=interaction.user, reason=reason))
         except Exception as e:
-            await interaction.response.send_message(f"❌ Failed: {e}", ephemeral=True)
+            await interaction.response.send_message(f"Failed: {e}", ephemeral=True)
 
     @app_commands.command(name="purge", description="Delete a number of messages from this channel")
     @app_commands.guild_only()
@@ -190,9 +190,9 @@ class Moderation(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         try:
             deleted = await interaction.channel.purge(limit=amount)
-            await interaction.followup.send(f"✅ Deleted **{len(deleted)}** messages.", ephemeral=True)
+            await interaction.followup.send(f"Deleted **{len(deleted)}** messages.", ephemeral=True)
         except Exception as e:
-            await interaction.followup.send(f"❌ Purge failed: {e}", ephemeral=True)
+            await interaction.followup.send(f"Purge failed: {e}", ephemeral=True)
 
     ai_mod = app_commands.Group(name="ai_mod", description="AI-powered moderation settings")
 
@@ -205,7 +205,7 @@ class Moderation(commands.Cog):
         configs[str(interaction.guild.id)] = enabled
         save_ai_mod_configs(configs)
         status = "enabled" if enabled else "disabled"
-        await interaction.followup.send(f"✅ AI Moderation has been **{status}** for this server.")
+        await interaction.followup.send(f"AI Moderation has been **{status}** for this server.")
 
     @ai_mod.command(name="status", description="Check AI moderation status")
     @app_commands.guild_only()
@@ -215,9 +215,9 @@ class Moderation(commands.Cog):
         is_enabled = configs.get(str(interaction.guild.id), False)
         status = "enabled" if is_enabled else "disabled"
         
-        embed = discord.Embed(title="🤖 AI Moderation Status (Free HF Mode)", color=discord.Color.blue() if is_enabled else discord.Color.greyple())
+        embed = discord.Embed(title="AI Moderation Status (Free HF Mode)", color=discord.Color.blue() if is_enabled else discord.Color.greyple())
         embed.add_field(name="Status", value=f"Currently **{status}**")
-        embed.add_field(name="HF Configured", value="✅ Yes" if HUGGINGFACE_TOKEN else "❌ No (Missing HF Token)")
+        embed.add_field(name="HF Configured", value="Yes" if HUGGINGFACE_TOKEN else "No (Missing HF Token)")
         await interaction.followup.send(embed=embed)
 
     @commands.Cog.listener()
@@ -258,7 +258,7 @@ class Moderation(commands.Cog):
                 
                 # Notify in channel
                 embed = discord.Embed(
-                    title="🛡️ AI Moderation Action",
+                    title="AI Moderation Action",
                     description=f"Message from {message.author.mention} was removed.",
                     color=discord.Color.red(),
                     timestamp=datetime.now(timezone.utc)
@@ -268,7 +268,7 @@ class Moderation(commands.Cog):
                 
                 # Log to DM (optional)
                 try:
-                    await message.author.send(f"⚠️ Your message in **{message.guild.name}** was removed because it triggered our AI moderation filters.\n**Reason:** {reason}")
+                    await message.author.send(f"Your message in **{message.guild.name}** was removed because it triggered our AI moderation filters.\n**Reason:** {reason}")
                 except:
                     pass
             except Exception as e:
@@ -277,3 +277,4 @@ class Moderation(commands.Cog):
 async def setup(bot: commands.Bot):
     print("DEBUG: Loading Moderation Cog", flush=True)
     await bot.add_cog(Moderation(bot))
+
