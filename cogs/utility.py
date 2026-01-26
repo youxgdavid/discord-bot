@@ -18,16 +18,16 @@ class Utility(commands.Cog):
         try:
             joined_time = member.joined_at.strftime("%Y-%m-%d %H:%M UTC") if member.joined_at else "Just now"
             embed = discord.Embed(
-                title="👋 Welcome to the Server!",
+                title="Welcome to the Server!",
                 description=(
                     f"Hey **{member.name}**!\n\n"
                     "We're glad to have you here 💙\n\n"
-                    "✨ **What you can do:**\n"
+                    "**What you can do:**\n"
                     "• Play casino games 🎰\n"
                     "• Check your balance with `/balance`\n"
                     "• Compete on the `/leaderboard`\n"
                     "• Try games like Blackjack, Mines, Tower & Wordle\n\n"
-                    "📌 **Tip:** Start with `/balance` to see your starting money!"
+                    "**Tip:** Start with `/balance` to see your starting money!"
                 ),
                 color=discord.Color.blurple(),
                 timestamp=datetime.now(timezone.utc)
@@ -43,12 +43,11 @@ class Utility(commands.Cog):
     async def check_setup(self, interaction: discord.Interaction):
         # These are accessed from the bot's environment or attributes if we pass them
         hf_token = os.getenv("HUGGINGFACE_TOKEN")
-        # ELEVEN_LABS_API_KEY was mentioned in main.py line 271 but not defined in the snippet I saw at the top. 
-        # I'll check main.py again for it if needed, but for now I'll use getenv.
+        
         el_key = os.getenv("ELEVEN_LABS_API_KEY")
         
-        hf_status = "✅ Loaded" if hf_token else "❌ Missing"
-        el_status = "✅ Loaded" if el_key else "❌ Missing"
+        hf_status = "✅ Loaded" if hf_token else "Missing"
+        el_status = "✅ Loaded" if el_key else "Missing"
         
         embed = discord.Embed(title="Bot Setup Diagnostic", color=discord.Color.blue())
         # BOT_VERSION would need to be passed or hardcoded
@@ -101,8 +100,8 @@ class Utility(commands.Cog):
     async def resync(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True, thinking=True)
         try:
-            # We need to access tree from interaction or bot
-            # tree = self.bot.tree # this should work if using commands.Bot
+            # We need to access tree from interaction or bot, if not it poops its self
+            # tree = self.bot.tree # this should work maybe if using commands.Bot
             await self.bot.tree.sync(guild=interaction.guild)
             await interaction.followup.send("Slash commands have been fully re-synced for this server.", ephemeral=True)
         except Exception as e:
@@ -124,4 +123,5 @@ class Utility(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Utility(bot))
+
 
