@@ -50,27 +50,27 @@ class Economy(commands.Cog):
         user_balance = get_balance(interaction.user.id)
 
         embed = discord.Embed(
-            title="💰 Your Balance",
+            title="Your Balance",
             color=discord.Color.gold(),
             timestamp=datetime.now(timezone.utc)
         )
 
         embed.add_field(
-            name="💵 Current Balance",
+            name="Current Balance",
             value=f"**${user_balance:,}**",
             inline=False
         )
 
         if user_balance >= 50000:
-            embed.add_field(name="🏆 Status", value="💰 **Snus money God**", inline=True)
+            embed.add_field(name="🏆 Status", value="**Snus money God**", inline=True)
         elif user_balance >= 25000:
-            embed.add_field(name="🏆 Status", value="💎 **Could by bare snus**", inline=True)
+            embed.add_field(name="🏆 Status", value="**Could by bare snus**", inline=True)
         elif user_balance >= 10000:
-            embed.add_field(name="🏆 Status", value="💵 **Chilling atm**", inline=True)
+            embed.add_field(name="🏆 Status", value="**Chilling atm**", inline=True)
         elif user_balance >= 1000:
-            embed.add_field(name="🏆 Status", value="💸 **Get your money up not your funny up**", inline=True)
+            embed.add_field(name="🏆 Status", value="**Get your money up not your funny up**", inline=True)
         else:
-            embed.add_field(name="🏆 Status", value="💀 **Brokie**", inline=True)
+            embed.add_field(name="🏆 Status", value="**Brokie**", inline=True)
 
         embed.set_footer(text=f"Requested by {interaction.user}", icon_url=interaction.user.display_avatar.url)
 
@@ -102,7 +102,7 @@ class Economy(commands.Cog):
                 net_gain = balance - STARTING_BALANCE
                 emoji = rank_emojis[i] if i < len(rank_emojis) else "🏅"
                 sign = "+" if net_gain >= 0 else ""
-                leaderboard_text += f"{emoji} **{user.name}** — 💰 ${balance:,}  (`{sign}{net_gain:,}`)\n"
+                leaderboard_text += f"{emoji} **{user.name}** —  ${balance:,}  (`{sign}{net_gain:,}`)\n"
             except Exception:
                 pass
 
@@ -120,3 +120,4 @@ class Economy(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Economy(bot))
+
