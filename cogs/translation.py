@@ -86,9 +86,9 @@ class Translation(commands.Cog):
             if channel_id in configs:
                 del configs[channel_id]
                 save_translate_configs(configs)
-                await interaction.followup.send("✅ Auto-translation disabled for this channel.")
+                await interaction.followup.send("Auto-translation disabled for this channel.")
             else:
-                await interaction.followup.send("❌ Auto-translation was not enabled for this channel.")
+                await interaction.followup.send("Auto-translation was not enabled for this channel.")
             return
 
         configs[channel_id] = {
@@ -98,8 +98,9 @@ class Translation(commands.Cog):
         save_translate_configs(configs)
 
         await interaction.followup.send(
-            f"✅ Auto-translation enabled! All messages in this channel will be translated to **{target_language.name}**."
+            f"Auto-translation enabled! All messages in this channel will be translated to **{target_language.name}**."
         )
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Translation(bot))
+
