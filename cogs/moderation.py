@@ -27,7 +27,7 @@ def save_ai_mod_configs(configs):
 async def check_moderation(text: str) -> Optional[dict]:
     """Check text against OpenAI Moderation API."""
     if not OPENAI_API_KEY:
-        print("DEBUG: Moderation check failed - Missing OPENAI_API_KEY")
+        print("DEBUG: Moderation check failed - Missing OPENAI_API_KEY", flush=True)
         return None
     
     url = "https://api.openai.com/v1/moderations"
@@ -45,10 +45,10 @@ async def check_moderation(text: str) -> Optional[dict]:
                     return result["results"][0]
                 else:
                     error_text = await resp.text()
-                    print(f"DEBUG: OpenAI API Error ({resp.status}): {error_text}")
+                    print(f"DEBUG: OpenAI API Error ({resp.status}): {error_text}", flush=True)
                     return None
     except Exception as e:
-        print(f"DEBUG: Exception during OpenAI moderation check: {e}")
+        print(f"DEBUG: Exception during OpenAI moderation check: {e}", flush=True)
         return None
 
 def make_mod_embed(title, color, *, user, moderator, reason=None, extra_fields=None):
@@ -202,7 +202,7 @@ class Moderation(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         # Early debug to see if listener is active and seeing content
-        print(f"DEBUG: Message from {message.author} (Length: {len(message.content)})")
+        print(f"DEBUG: Message from {message.author} (Length: {len(message.content)})", flush=True)
 
         if message.author.bot or not message.guild:
             return
@@ -210,18 +210,19 @@ class Moderation(commands.Cog):
         configs = load_ai_mod_configs()
         guild_id_str = str(message.guild.id)
         if not configs.get(guild_id_str, False):
+            # print(f"DEBUG: AI Mod not enabled for guild {guild_id_str}", flush=True)
             return
 
         # Skip moderation for users with manage_messages permission
         if message.author.guild_permissions.manage_messages:
             return
 
-        print(f"DEBUG: AI SCANNING message from {message.author}: {message.content[:50]}")
+        print(f"DEBUG: AI SCANNING message from {message.author}: {message.content[:50]}", flush=True)
         result = await check_moderation(message.content)
         if result:
-            print(f"DEBUG: Flagged status: {result.get('flagged')}")
+            print(f"DEBUG: Flagged status: {result.get('flagged')}", flush=True)
         else:
-            print("DEBUG: AI Moderation check returned None (API issue?)")
+            print("DEBUG: AI Moderation check returned None (API issue?)", flush=True)
 
         if result and result.get("flagged"):
             categories = [cat for cat, val in result.get("categories", {}).items() if val]
@@ -253,4 +254,5 @@ class Moderation(commands.Cog):
                 print(f"Error in AI moderation: {e}")
 
 async def setup(bot: commands.Bot):
+    print("DEBUG: Loading Moderation Cog", flush=True)
     await bot.add_cog(Moderation(bot))
