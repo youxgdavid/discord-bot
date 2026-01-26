@@ -43,7 +43,7 @@ class LastFM(commands.Cog):
         configs = load_lastfm_configs()
         configs[str(interaction.user.id)] = username
         save_lastfm_configs(configs)
-        await interaction.response.send_message(f"✅ Last.fm account linked: **{username}**", ephemeral=True)
+        await interaction.response.send_message(f"Last.fm account linked: **{username}**", ephemeral=True)
 
     @app_commands.command(name="np", description="Show what you are currently listening to")
     async def np(self, interaction: discord.Interaction, member: Optional[discord.Member] = None):
@@ -53,7 +53,7 @@ class LastFM(commands.Cog):
 
         if not username:
             await interaction.response.send_message(
-                f"❌ {'You' if target == interaction.user else f'{target.display_name}'} haven't linked a Last.fm account. Use `/set_fm [username]` to link.",
+                f"{'You' if target == interaction.user else f'{target.display_name}'} haven't linked a Last.fm account. Use `/set_fm [username]` to link.",
                 ephemeral=True
             )
             return
@@ -64,7 +64,7 @@ class LastFM(commands.Cog):
             # Get recent tracks (current playing)
             recent_data = await fetch_lastfm_data("user.getrecenttracks", {"user": username, "limit": 1})
             if not recent_data or "recenttracks" not in recent_data or not recent_data["recenttracks"]["track"]:
-                await interaction.followup.send(f"❌ Could not fetch data for **{username}**.")
+                await interaction.followup.send(f"Could not fetch data for **{username}**.")
                 return
 
             track_data = recent_data["recenttracks"]["track"][0]
@@ -109,3 +109,4 @@ class LastFM(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(LastFM(bot))
+
