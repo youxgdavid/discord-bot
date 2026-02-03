@@ -54,9 +54,12 @@ class MyBot(commands.Bot):
         print("--- COG LOAD COMPLETE ---", flush=True)
 
         # Robust Sync
-        sync_mode = os.getenv("SYNC_COMMANDS", "true").lower()
+        sync_mode = os.getenv("SYNC_COMMANDS", "false").lower()
         if sync_mode == "true":
             try:
+                # Ensure the sync command itself is in the tree
+                self.tree.add_command(self.sync_command)
+                
                 if self.GUILD_OBJECT:
                     print(f"⚡ Syncing commands to Guild: {self.GUILD_ID}...", flush=True)
                     self.tree.copy_global_to(guild=self.GUILD_OBJECT)
