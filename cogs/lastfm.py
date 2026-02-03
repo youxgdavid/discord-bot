@@ -21,21 +21,31 @@ def save_lastfm_configs(configs):
     with open(LAST_FM_CONFIG_FILE, 'w') as f:
         json.dump(configs, f, indent=2)
 
-async def fetch_lastfm_data(method, params):
-    params.update({
-        "method": method,
-        "api_key": LAST_FM_API_KEY,
-        "format": "json"
-    })
-    async with aiohttp.ClientSession() as session:
+class LastFM(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        self._session: Optional[aiohttp.ClientSession] = None
+
+    def get_session(self):
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession()
+        return self._session
+
+    async def cog_unload(self):
+        if self._session:
+            await self._session.close()
+
+    async def fetch_lastfm_data(self, method, params):
+        params.update({
+            "method": method,
+            "api_key": LAST_FM_API_KEY,
+            "format": "json"
+        })
+        session = self.get_session()
         async with session.get("http://ws.audioscrobbler.com/2.0/", params=params) as response:
             if response.status == 200:
                 return await response.json()
             return None
-
-class LastFM(commands.Cog):
-    def __init__(self, bot: commands.Bot):
-        self.bot = bot
 
     @app_commands.command(name="set_fm", description="Link your Last.fm account")
     @app_commands.describe(username="Your Last.fm username")
@@ -43,7 +53,7 @@ class LastFM(commands.Cog):
         configs = load_lastfm_configs()
         configs[str(interaction.user.id)] = username
         save_lastfm_configs(configs)
-        await interaction.response.send_message(f"Last.fm account linked: **{username}**", ephemeral=True)
+        await interaction.response.send_message(f"✅ Last.fm account linked: **{username}**", ephemeral=True)
 
     @app_commands.command(name="np", description="Show what you are currently listening to")
     async def np(self, interaction: discord.Interaction, member: Optional[discord.Member] = None):
@@ -53,7 +63,7 @@ class LastFM(commands.Cog):
 
         if not username:
             await interaction.response.send_message(
-                f"{'You' if target == interaction.user else f'{target.display_name}'} haven't linked a Last.fm account. Use `/set_fm [username]` to link.",
+                f"❌ {'You' if target == interaction.user else f'{target.display_name}'} haven't linked a Last.fm account. Use `/set_fm [username]` to link.",
                 ephemeral=True
             )
             return
@@ -61,30 +71,26 @@ class LastFM(commands.Cog):
         await interaction.response.defer()
 
         try:
-            # Get recent tracks (current playing)
-            recent_data = await fetch_lastfm_data("user.getrecenttracks", {"user": username, "limit": 1})
+            recent_data = await self.fetch_lastfm_data("user.getrecenttracks", {"user": username, "limit": 1})
             if not recent_data or "recenttracks" not in recent_data or not recent_data["recenttracks"]["track"]:
-                await interaction.followup.send(f"Could not fetch data for **{username}**.")
+                await interaction.followup.send(f"❌ Could not fetch data for **{username}**.")
                 return
 
             track_data = recent_data["recenttracks"]["track"][0]
             artist = track_data["artist"]["#text"]
             track_name = track_data["name"]
             album = track_data["album"]["#text"]
-            image_url = track_data["image"][-1]["#text"] # Large image
+            image_url = track_data["image"][-1]["#text"] 
             
-            # Check if currently playing
             now_playing = "@attr" in track_data and track_data["@attr"].get("nowplaying") == "true"
             status_text = "Now Playing" if now_playing else "Last Played"
 
-            # Get track info for play count
-            track_info = await fetch_lastfm_data("track.getInfo", {"user": username, "artist": artist, "track": track_name})
+            track_info = await self.fetch_lastfm_data("track.getInfo", {"user": username, "artist": artist, "track": track_name})
             user_playcount = "0"
             if track_info and "track" in track_info:
                 user_playcount = track_info["track"].get("userplaycount", "0")
 
-            # Get user info for total scrobbles
-            user_info = await fetch_lastfm_data("user.getInfo", {"user": username})
+            user_info = await self.fetch_lastfm_data("user.getInfo", {"user": username})
             total_scrobbles = "0"
             if user_info and "user" in user_info:
                 total_scrobbles = user_info["user"].get("playcount", "0")
@@ -109,4 +115,3 @@ class LastFM(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(LastFM(bot))
-
