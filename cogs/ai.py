@@ -10,7 +10,7 @@ from huggingface_hub import InferenceClient
 
 HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
 HF_IMAGE_MODEL = "stabilityai/stable-diffusion-xl-base-1.0"
-HF_TEXT_MODEL = "mistralai/Mistral-7B-Instruct-v0.2"
+HF_TEXT_MODEL = "HuggingFaceH4/zephyr-7b-beta"
 
 class ImagineView(discord.ui.View):
     def __init__(self, scene: str, user_id: int, cog):
@@ -127,3 +127,4 @@ class AI(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(AI(bot))
+
