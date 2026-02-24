@@ -53,13 +53,13 @@ class MyBot(commands.Bot):
                     print(f"❌ Failed to load extension {filename}: {e}", flush=True)
         print("--- COG LOAD COMPLETE ---", flush=True)
 
+        # Ensure the sync command itself is in the tree so it's always available to admins
+        self.tree.add_command(self.sync_command)
+
         # Robust Sync
         sync_mode = os.getenv("SYNC_COMMANDS", "false").lower()
         if sync_mode == "true":
             try:
-                # Ensure the sync command itself is in the tree
-                self.tree.add_command(self.sync_command)
-                
                 if self.GUILD_OBJECT:
                     print(f"⚡ Syncing commands to Guild: {self.GUILD_ID}...", flush=True)
                     self.tree.copy_global_to(guild=self.GUILD_OBJECT)
@@ -68,9 +68,11 @@ class MyBot(commands.Bot):
                 else:
                     print("⚡ Syncing commands globally...", flush=True)
                     synced = await self.tree.sync()
-                    print(f"✅ {len(synced)} Global commands synced (may take up to an hour to propagate).", flush=True)
+                    print(f"✅ {len(synced)} Global commands synced.", flush=True)
             except Exception as e:
                 print(f"❌ Sync failed: {e}", flush=True)
+        else:
+            print("ℹ️ SYNC_COMMANDS is false. Use /sync manually if needed.", flush=True)
 
     @app_commands.command(name="sync", description="Manually sync application commands")
     @app_commands.guild_only()
