@@ -678,7 +678,7 @@ class Games(commands.Cog):
             await interaction.response.send_message("Tower cleared!", ephemeral=True)
         else: await interaction.response.send_message("No active game.", ephemeral=True)
 
-    @app_commands.command(name="Pixel Hub", description="View all available casino games in one place!")
+    @app_commands.command(name="pixel_hub1", description="View all available casino games in one place!")
     async def mee6_games(self, interaction: discord.Interaction):
         embed = discord.Embed(
             title="Pixel Hub",
@@ -698,3 +698,4 @@ class Games(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Games(bot))
+
