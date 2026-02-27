@@ -18,23 +18,23 @@ class Utility(commands.Cog):
         try:
             joined_time = member.joined_at.strftime("%Y-%m-%d %H:%M UTC") if member.joined_at else "Just now"
             embed = discord.Embed(
-                title="Welcome to the Server!",
+                title="👋 Welcome to the Server!",
                 description=(
                     f"Hey **{member.name}**!\n\n"
                     "We're glad to have you here 💙\n\n"
-                    "**What you can do:**\n"
+                    "✨ **What you can do:**\n"
                     "• Play casino games 🎰\n"
                     "• Check your balance with `/balance`\n"
                     "• Compete on the `/leaderboard`\n"
                     "• Try games like Blackjack, Mines, Tower & Wordle\n\n"
-                    "**Tip:** Start with `/balance` to see your starting money!"
+                    "📌 **Tip:** Start with `/balance` to see your starting money!"
                 ),
                 color=discord.Color.blurple(),
                 timestamp=datetime.now(timezone.utc)
             )
             embed.set_thumbnail(url=member.display_avatar.url)
-            embed.add_field(name="Joined At", value=f"`{joined_time}`", inline=False)
-            embed.set_footer(text="Enjoy your stay")
+            embed.add_field(name="🕒 Joined At", value=f"`{joined_time}`", inline=False)
+            embed.set_footer(text="Enjoy your stay 🚀")
             await member.send(embed=embed)
         except discord.Forbidden:
             pass
@@ -43,11 +43,12 @@ class Utility(commands.Cog):
     async def check_setup(self, interaction: discord.Interaction):
         # These are accessed from the bot's environment or attributes if we pass them
         hf_token = os.getenv("HUGGINGFACE_TOKEN")
-        
+        # ELEVEN_LABS_API_KEY was mentioned in main.py line 271 but not defined in the snippet I saw at the top. 
+        # I'll check main.py again for it if needed, but for now I'll use getenv.
         el_key = os.getenv("ELEVEN_LABS_API_KEY")
         
-        hf_status = "✅ Loaded" if hf_token else "Missing"
-        el_status = "✅ Loaded" if el_key else "Missing"
+        hf_status = "✅ Loaded" if hf_token else "❌ Missing"
+        el_status = "✅ Loaded" if el_key else "❌ Missing"
         
         embed = discord.Embed(title="Bot Setup Diagnostic", color=discord.Color.blue())
         # BOT_VERSION would need to be passed or hardcoded
@@ -73,9 +74,9 @@ class Utility(commands.Cog):
         else:
             color, status = discord.Color.red(), "High Latency"
 
-        embed = discord.Embed(title="Pong!", color=color, timestamp=datetime.now(timezone.utc))
-        embed.add_field(name="Latency", value=f"**{latency}ms**", inline=True)
-        embed.add_field(name="Status", value=f"**{status}**", inline=True)
+        embed = discord.Embed(title="🏓 Pong!", color=color, timestamp=datetime.now(timezone.utc))
+        embed.add_field(name="📡 Latency", value=f"**{latency}ms**", inline=True)
+        embed.add_field(name="🔌 Status", value=f"**{status}**", inline=True)
         embed.set_footer(text=f"Requested by {interaction.user}", icon_url=interaction.user.display_avatar.url)
         await interaction.response.send_message(embed=embed)
 
@@ -86,24 +87,28 @@ class Utility(commands.Cog):
             member = cast(discord.Member, interaction.user)
         embed = discord.Embed(title=f"User Info - {member}", color=discord.Color.blurple(), timestamp=datetime.now(timezone.utc))
         embed.set_thumbnail(url=member.display_avatar.url)
-        embed.add_field(name="ID", value=member.id, inline=False)
-        embed.add_field(name="Username", value=member.name, inline=False)
-        embed.add_field(name="Nickname", value=member.display_name, inline=False)
-        embed.add_field(name="Joined Server", value=member.joined_at.strftime("%Y-%m-%d %H:%M:%S") if member.joined_at else "Unknown", inline=False)
-        embed.add_field(name="Account Created", value=member.created_at.strftime("%Y-%m-%d %H:%M:%S"), inline=False)
-        embed.add_field(name="Roles", value=" ".join([role.mention for role in member.roles[1:]]) or "No roles", inline=False)
+        embed.add_field(name="🪪 ID", value=member.id, inline=False)
+        embed.add_field(name="📛 Username", value=member.name, inline=False)
+        embed.add_field(name="🎨 Nickname", value=member.display_name, inline=False)
+        embed.add_field(name="📅 Joined Server", value=member.joined_at.strftime("%Y-%m-%d %H:%M:%S") if member.joined_at else "Unknown", inline=False)
+        embed.add_field(name="🕰️ Account Created", value=member.created_at.strftime("%Y-%m-%d %H:%M:%S"), inline=False)
+        embed.add_field(name="🎭 Roles", value=" ".join([role.mention for role in member.roles[1:]]) or "No roles", inline=False)
         embed.set_footer(text=f"Requested by {interaction.user}", icon_url=interaction.user.display_avatar.url)
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="resync", description="Force resync slash commands")
     @app_commands.guild_only()
-    async def resync(self, interaction: discord.Interaction):
+    @app_commands.describe(global_sync="Sync globally instead of just this guild")
+    async def resync(self, interaction: discord.Interaction, global_sync: bool = False):
         await interaction.response.defer(ephemeral=True, thinking=True)
         try:
-            # We need to access tree from interaction or bot, if not it poops its self
-            # tree = self.bot.tree # this should work maybe if using commands.Bot
-            await self.bot.tree.sync(guild=interaction.guild)
-            await interaction.followup.send("Slash commands have been fully re-synced for this server.", ephemeral=True)
+            if global_sync:
+                await self.bot.tree.sync()
+                await interaction.followup.send("Global slash commands have been synced (can take up to an hour).", ephemeral=True)
+            else:
+                self.bot.tree.copy_global_to(guild=interaction.guild)
+                await self.bot.tree.sync(guild=interaction.guild)
+                await interaction.followup.send("Slash commands have been re-synced for this server.", ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ Sync failed: {e}", ephemeral=True)
 
@@ -121,7 +126,24 @@ class Utility(commands.Cog):
         except Exception as e:
             await interaction.followup.send(f"❌ Cleanup failed: {e}", ephemeral=True)
 
+    @commands.command(name="sync")
+    @commands.is_owner()
+    async def sync_prefix(self, ctx: commands.Context, scope: str = "guild"):
+        """Prefix command to sync slash commands manually (Owner only)."""
+        async with ctx.typing():
+            try:
+                if scope == "guild":
+                    if ctx.guild:
+                        self.bot.tree.copy_global_to(guild=ctx.guild)
+                        synced = await self.bot.tree.sync(guild=ctx.guild)
+                        await ctx.send(f"✅ Synced {len(synced)} commands to **{ctx.guild.name}**.")
+                    else:
+                        await ctx.send("❌ This scope requires a guild.")
+                else:
+                    synced = await self.bot.tree.sync()
+                    await ctx.send(f"✅ Synced {len(synced)} commands **globally**. Note: Global propagation can take up to an hour.")
+            except Exception as e:
+                await ctx.send(f"❌ Prefix Sync failed: {e}")
+
 async def setup(bot: commands.Bot):
     await bot.add_cog(Utility(bot))
-
-
