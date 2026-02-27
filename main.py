@@ -92,25 +92,6 @@ class MyBot(commands.Bot):
         except Exception as e:
             await interaction.followup.send(f"❌ Sync failed: {e}")
 
-    @commands.command(name="sync")
-    @commands.is_owner()
-    async def sync_prefix(self, ctx: commands.Context, scope: str = "guild"):
-        """Prefix command to sync slash commands manually (Owner only)."""
-        async with ctx.typing():
-            try:
-                if scope == "guild":
-                    if ctx.guild:
-                        self.tree.copy_global_to(guild=ctx.guild)
-                        synced = await self.tree.sync(guild=ctx.guild)
-                        await ctx.send(f"✅ Synced {len(synced)} commands to **{ctx.guild.name}**.")
-                    else:
-                        await ctx.send("❌ This scope requires a guild.")
-                else:
-                    synced = await self.tree.sync()
-                    await ctx.send(f"✅ Synced {len(synced)} commands **globally**. Note: Global propagation can take up to an hour.")
-            except Exception as e:
-                await ctx.send(f"❌ Prefix Sync failed: {e}")
-
     async def on_ready(self):
         print(f"✅ VERSION {self.BOT_VERSION} active", flush=True)
         print(f"✅ Logged in as {self.user}", flush=True)
