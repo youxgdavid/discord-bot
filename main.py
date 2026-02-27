@@ -64,15 +64,15 @@ class MyBot(commands.Bot):
                     print(f"⚡ Syncing commands to Guild: {self.GUILD_ID}...", flush=True)
                     self.tree.copy_global_to(guild=self.GUILD_OBJECT)
                     synced = await self.tree.sync(guild=self.GUILD_OBJECT)
-                    print(f"✅ {len(synced)} Guild commands synced.", flush=True)
+                    print(f"✅ {len(synced)} Guild commands synced to {self.GUILD_ID}.", flush=True)
                 else:
                     print("⚡ Syncing commands globally...", flush=True)
                     synced = await self.tree.sync()
                     print(f"✅ {len(synced)} Global commands synced.", flush=True)
             except Exception as e:
-                print(f"❌ Sync failed: {e}", flush=True)
+                print(f"❌ Sync failed during setup_hook: {e}", flush=True)
         else:
-            print("ℹ️ SYNC_COMMANDS is false. Use /sync manually if needed.", flush=True)
+            print(f"ℹ️ SYNC_COMMANDS is {sync_mode}. Skipping auto-sync. Use !sync or /sync.", flush=True)
 
     @app_commands.command(name="sync", description="Manually sync application commands")
     @app_commands.guild_only()
@@ -91,6 +91,25 @@ class MyBot(commands.Bot):
                 await interaction.followup.send(f"✅ Synced {len(synced)} commands globally. Propagation may take time.")
         except Exception as e:
             await interaction.followup.send(f"❌ Sync failed: {e}")
+
+    @commands.command(name="sync")
+    @commands.is_owner()
+    async def sync_prefix(self, ctx: commands.Context, scope: str = "guild"):
+        """Prefix command to sync slash commands manually (Owner only)."""
+        async with ctx.typing():
+            try:
+                if scope == "guild":
+                    if ctx.guild:
+                        self.tree.copy_global_to(guild=ctx.guild)
+                        synced = await self.tree.sync(guild=ctx.guild)
+                        await ctx.send(f"✅ Synced {len(synced)} commands to **{ctx.guild.name}**.")
+                    else:
+                        await ctx.send("❌ This scope requires a guild.")
+                else:
+                    synced = await self.tree.sync()
+                    await ctx.send(f"✅ Synced {len(synced)} commands **globally**. Note: Global propagation can take up to an hour.")
+            except Exception as e:
+                await ctx.send(f"❌ Prefix Sync failed: {e}")
 
     async def on_ready(self):
         print(f"✅ VERSION {self.BOT_VERSION} active", flush=True)
