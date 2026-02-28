@@ -41,10 +41,9 @@ class Utility(commands.Cog):
 
     @app_commands.command(name="check_setup", description="Verify if bot tokens and version are correctly loaded")
     async def check_setup(self, interaction: discord.Interaction):
-        # These are accessed from the bot's environment or attributes if we pass them
+        
         hf_token = os.getenv("HUGGINGFACE_TOKEN")
-        # ELEVEN_LABS_API_KEY was mentioned in main.py line 271 but not defined in the snippet I saw at the top. 
-        # I'll check main.py again for it if needed, but for now I'll use getenv.
+        
         el_key = os.getenv("ELEVEN_LABS_API_KEY")
         
         hf_status = "✅ Loaded" if hf_token else "❌ Missing"
@@ -147,3 +146,4 @@ class Utility(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Utility(bot))
+
