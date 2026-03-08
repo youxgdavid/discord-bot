@@ -41,9 +41,10 @@ class Utility(commands.Cog):
 
     @app_commands.command(name="check_setup", description="Verify if bot tokens and version are correctly loaded")
     async def check_setup(self, interaction: discord.Interaction):
-        
+        # These are accessed from the bot's environment or attributes if we pass them
         hf_token = os.getenv("HUGGINGFACE_TOKEN")
-        
+        # ELEVEN_LABS_API_KEY was mentioned in main.py line 271 but not defined in the snippet I saw at the top. 
+        # I'll check main.py again for it if needed, but for now I'll use getenv.
         el_key = os.getenv("ELEVEN_LABS_API_KEY")
         
         hf_status = "✅ Loaded" if hf_token else "❌ Missing"
@@ -93,6 +94,24 @@ class Utility(commands.Cog):
         embed.add_field(name="🕰️ Account Created", value=member.created_at.strftime("%Y-%m-%d %H:%M:%S"), inline=False)
         embed.add_field(name="🎭 Roles", value=" ".join([role.mention for role in member.roles[1:]]) or "No roles", inline=False)
         embed.set_footer(text=f"Requested by {interaction.user}", icon_url=interaction.user.display_avatar.url)
+        await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="av", description="Show high-quality avatar of a user")
+    @app_commands.guild_only()
+    @app_commands.describe(member="The member to show the avatar of")
+    async def avatar(self, interaction: discord.Interaction, member: Optional[discord.Member] = None):
+        if member is None:
+            member = cast(discord.Member, interaction.user)
+        
+        avatar_url = member.display_avatar.with_size(4096).url
+        embed = discord.Embed(
+            title=f"Avatar of {member.display_name}",
+            color=discord.Color.blurple(),
+            timestamp=datetime.now(timezone.utc)
+        )
+        embed.set_image(url=avatar_url)
+        embed.set_footer(text=f"Requested by {interaction.user}", icon_url=interaction.user.display_avatar.url)
+        
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="resync", description="Force resync slash commands")
@@ -146,4 +165,3 @@ class Utility(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Utility(bot))
-
