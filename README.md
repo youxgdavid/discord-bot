@@ -74,19 +74,6 @@ Your all-in-one **Discord entertainment bot**
 - Persistent balances saved in `player_balances.json`  
 - Global `/leaderboard` ranking shows the top players  
 
----
-
-**AI Image Generation**
-
-| Feature | Description |
-|----------|--------------|
-| `/recreate scene:<text>` | Generate stunning images with text prompts using **Hugging Face Stable Diffusion XL** |
-| Example | `/recreate scene: draw my minecraft base as an ancient ruin` |
-| API | Uses the free Hugging Face inference API (`stabilityai/stable-diffusion-xl-base-1.0`) |
-| Env Variable | `HUGGINGFACE_TOKEN` required for authentication |
-
-
-
 
 
 
