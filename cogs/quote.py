@@ -10,8 +10,13 @@ import textwrap
 from datetime import datetime, timezone
 
 class QuoteGenerator:
-    def __init__(self, font_dir: str = "assets/fonts"):
-        self.font_dir = font_dir
+    def __init__(self, font_dir: str = None):
+        if font_dir is None:
+            # Get the path relative to this file's location
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            self.font_dir = os.path.join(base_dir, "assets", "fonts")
+        else:
+            self.font_dir = font_dir
         self.fonts = {
             "Roboto": "Roboto-Bold.ttf",
             "Montserrat": "Montserrat-SemiBold.ttf",
