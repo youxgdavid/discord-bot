@@ -69,14 +69,19 @@ class QuoteGenerator:
 
         # Draw Text
         font_path = self.get_font_path(font_name)
+        if not os.path.exists(font_path):
+            raise FileNotFoundError(f"Font not found at path: {font_path}")
         
-        # Content Font
-        content_font_size = 50
-        content_font = ImageFont.truetype(font_path, content_font_size)
-        
-        # Author Name Font
-        author_font = ImageFont.truetype(font_path, 40)
-        handle_font = ImageFont.truetype(font_path, 25)
+        try:
+            # Content Font
+            content_font_size = 50
+            content_font = ImageFont.truetype(font_path, content_font_size)
+            
+            # Author Name Font
+            author_font = ImageFont.truetype(font_path, 40)
+            handle_font = ImageFont.truetype(font_path, 25)
+        except Exception as e:
+            raise RuntimeError(f"Failed to load font '{font_name}' from {font_path}: {e}")
 
         # Wrap content
         wrapped_text = textwrap.fill(content, width=30)
