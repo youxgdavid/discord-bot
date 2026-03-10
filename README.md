@@ -1,6 +1,3 @@
-**My Discord Bot**
-
-![Bot Demo](https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHoxZ28xa2RlaHBra3NrOWRyZjQ3NWtjc3gycmdmbHR4YW1kbWNrZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Kb3VjUXG7pHLPsTUbK/giphy.gif)
 
 A fun and interactive Discord bot with games, utilities, and a balance system.  
 
@@ -45,6 +42,7 @@ Your all-in-one **Discord entertainment bot**
 | Command | Description |
 |---------|-------------|
 | `/ping` | Check bot latency |
+| `/quote` | Quote a message or ID - Customise to your liking |
 | `/ai_mod toggle` | Automatically detects harmful messages|
 | `/Set_fm` | Displays the currect playing track |
 | `/Translate_Setup` | All messages in a channel will be translated to a language by your choice. (11 different unique languages) |
@@ -86,6 +84,7 @@ Your all-in-one **Discord entertainment bot**
 | Example | `/recreate scene: draw my minecraft base as an ancient ruin` |
 | API | Uses the free Hugging Face inference API (`stabilityai/stable-diffusion-xl-base-1.0`) |
 | Env Variable | `HUGGINGFACE_TOKEN` required for authentication |
+
 
 
 
