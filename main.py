@@ -107,7 +107,7 @@ if __name__ == "__main__":
         print("❌ ERROR: DISCORD_TOKEN not found in environment variables")
     else:
         retry_count = 0
-        max_retries = 5
+        max_retries = 10
         
         while retry_count < max_retries:
             try:
