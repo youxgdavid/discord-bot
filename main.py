@@ -35,8 +35,8 @@ intents.members = True
 intents.message_content = True
 
 class MyBot(commands.Bot):
-    def __init__(self):
-        super().__init__(command_prefix="!", intents=intents)
+    def __init__(self, proxy=None):
+        super().__init__(command_prefix="!", intents=intents, proxy=proxy)
         self.BOT_VERSION = BOT_VERSION
         self.GUILD_ID = os.getenv("GUILD_ID")
         self.GUILD_OBJECT = discord.Object(id=int(self.GUILD_ID)) if self.GUILD_ID else None
@@ -97,11 +97,33 @@ class MyBot(commands.Bot):
         print(f"✅ Logged in as {self.user}", flush=True)
         await self.change_presence(activity=discord.Game(name="Casino Games | /balance"))
 
-bot = MyBot()
+bot = None
 
 if __name__ == "__main__":
     token = os.getenv("DISCORD_TOKEN")
+    proxy = os.getenv("DISCORD_PROXY")
+    
     if not token:
         print("❌ ERROR: DISCORD_TOKEN not found in environment variables")
     else:
-        bot.run(token)
+        retry_count = 0
+        max_retries = 5
+        
+        while retry_count < max_retries:
+            try:
+                bot = MyBot(proxy=proxy)
+                bot.run(token)
+                break # If run() finishes normally
+            except discord.errors.HTTPException as e:
+                if e.status == 429:
+                    retry_count += 1
+                    wait_time = 2 ** retry_count
+                    print(f"⚠️ RATE LIMITED (429). Retrying in {wait_time}s... (Attempt {retry_count}/{max_retries})", flush=True)
+                    import time
+                    time.sleep(wait_time)
+                else:
+                    print(f"❌ HTTP Error: {e}", flush=True)
+                    break
+            except Exception as e:
+                print(f"❌ Unexpected error: {e}", flush=True)
+                break
