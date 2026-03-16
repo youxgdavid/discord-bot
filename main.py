@@ -3,30 +3,11 @@ from discord import app_commands
 from discord.ext import commands
 import os
 import asyncio
-from flask import Flask
-from threading import Thread
+from aiohttp import web
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
-
-# Create Flask app for uptime
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "Discord bot is online!"
-
-def run():
-    port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port)
-
-def keep_alive():
-    t = Thread(target=run)
-    t.start()
-
-# Start the web server
-keep_alive()
 
 # Discord client and intents
 BOT_VERSION = "2.3.2-AI-FIX"
@@ -40,8 +21,19 @@ class MyBot(commands.Bot):
         self.BOT_VERSION = BOT_VERSION
         self.GUILD_ID = os.getenv("GUILD_ID")
         self.GUILD_OBJECT = discord.Object(id=int(self.GUILD_ID)) if self.GUILD_ID else None
+        self.site = None
 
     async def setup_hook(self):
+        # Starts aiohttp server for health check inside the bot's loop
+        app = web.Application()
+        app.router.add_get('/', lambda r: web.Response(text="Discord bot is online!"))
+        runner = web.AppRunner(app)
+        await runner.setup()
+        port = int(os.environ.get('PORT', 8080))
+        self.site = web.TCPSite(runner, '0.0.0.0', port)
+        await self.site.start()
+        print(f"✅ Health check server started on port {port}", flush=True)
+
         print("--- STARTING COG LOAD ---", flush=True)
         # Load all cogs
         for filename in os.listdir('./cogs'):
@@ -53,7 +45,7 @@ class MyBot(commands.Bot):
                     print(f"❌ Failed to load extension {filename}: {e}", flush=True)
         print("--- COG LOAD COMPLETE ---", flush=True)
 
-        # Ensure the sync command itself is in the tree so it's always available to admins
+        # Ensure the sync command itself is in the tree
         self.tree.add_command(self.sync_command)
 
         # Robust Sync
@@ -80,7 +72,6 @@ class MyBot(commands.Bot):
     async def sync_command(self, interaction: discord.Interaction, scope: str = "guild"):
         """Syncs commands. Scope can be 'guild' or 'global'."""
         await interaction.response.defer(ephemeral=True)
-        
         try:
             if scope == "guild":
                 self.tree.copy_global_to(guild=interaction.guild)
@@ -88,7 +79,7 @@ class MyBot(commands.Bot):
                 await interaction.followup.send(f"✅ Synced {len(synced)} commands to this guild.")
             else:
                 synced = await self.tree.sync()
-                await interaction.followup.send(f"✅ Synced {len(synced)} commands globally. Propagation may take time.")
+                await interaction.followup.send(f"✅ Synced {len(synced)} commands globally.")
         except Exception as e:
             await interaction.followup.send(f"❌ Sync failed: {e}")
 
@@ -97,33 +88,43 @@ class MyBot(commands.Bot):
         print(f"✅ Logged in as {self.user}", flush=True)
         await self.change_presence(activity=discord.Game(name="Casino Games | /balance"))
 
-bot = None
-
-if __name__ == "__main__":
+async def main():
     token = os.getenv("DISCORD_TOKEN")
     proxy = os.getenv("DISCORD_PROXY")
     
     if not token:
         print("❌ ERROR: DISCORD_TOKEN not found in environment variables")
-    else:
-        retry_count = 0
-        max_retries = 10
-        
-        while retry_count < max_retries:
-            try:
-                bot = MyBot(proxy=proxy)
-                bot.run(token)
-                break # If run() finishes normally
-            except discord.errors.HTTPException as e:
-                if e.status == 429:
-                    retry_count += 1
-                    wait_time = 2 ** retry_count
-                    print(f"⚠️ RATE LIMITED (429). Retrying in {wait_time}s... (Attempt {retry_count}/{max_retries})", flush=True)
-                    import time
-                    time.sleep(wait_time)
-                else:
-                    print(f"❌ HTTP Error: {e}", flush=True)
-                    break
-            except Exception as e:
-                print(f"❌ Unexpected error: {e}", flush=True)
+        return
+
+    retry_count = 0
+    max_retries = 10
+    # requested for faster retries
+    wait_times = [5, 15, 30, 60, 120, 180, 180, 180, 180, 180]
+    
+    while retry_count < max_retries:
+        bot = MyBot(proxy=proxy)
+        try:
+            print(f"🚀 Attempting login ({retry_count + 1}/{max_retries})...", flush=True)
+            async with bot:
+                await bot.start(token)
+        except discord.errors.HTTPException as e:
+            if e.status == 429:
+                wait_time = wait_times[min(retry_count, len(wait_times) - 1)]
+                print(f"⚠️ RATE LIMITED (429). Waiting {wait_time}s before retry...", flush=True)
+                retry_count += 1
+                await asyncio.sleep(wait_time)
+            else:
+                print(f"❌ HTTP Error: {e}", flush=True)
                 break
+        except Exception as e:
+            print(f"❌ Unexpected error: {e}", flush=True)
+            break
+        finally:
+            if not bot.is_closed():
+                await bot.close()
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
