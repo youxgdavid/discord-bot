@@ -121,11 +121,33 @@ async def main():
     except Exception as e:
         print(f"⚠️ Warning: Health check server failed to start: {e}", flush=True)
 
-    # 2. Start the Bot (Single attempt, let Render handle restarts if it fails)
-    bot = MyBot(proxy=proxy)
-    print(f"🚀 Attempting login...", flush=True)
-    async with bot:
-        await bot.start(token)
+    # 2. Start the Bot
+    retry_count = 0
+    max_retries = 10
+    wait_times = [5, 15, 30, 60, 120, 180, 180, 180, 180, 180]
+    
+    while retry_count < max_retries:
+        bot = MyBot(proxy=proxy)
+        try:
+            print(f"🚀 Attempting login ({retry_count + 1}/{max_retries})...", flush=True)
+            async with bot:
+                await bot.start(token)
+            break
+        except discord.errors.HTTPException as e:
+            if e.status == 429 or "1015" in str(e):
+                wait_time = wait_times[min(retry_count, len(wait_times) - 1)]
+                print(f"⚠️ RATE LIMITED (1015/429). Waiting {wait_time}s before retry...", flush=True)
+                retry_count += 1
+                await asyncio.sleep(wait_time)
+            else:
+                print(f"❌ HTTP Error: {e}", flush=True)
+                break
+        except Exception as e:
+            print(f"❌ Unexpected error: {e}", flush=True)
+            break
+        finally:
+            if not bot.is_closed():
+                await bot.close()
 
 if __name__ == "__main__":
     try:
