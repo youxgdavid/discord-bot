@@ -98,7 +98,7 @@ async def main():
 
     retry_count = 0
     max_retries = 10
-    # requested for faster retries
+    # for faster retries
     wait_times = [5, 15, 30, 60, 120, 180, 180, 180, 180, 180]
     
     while retry_count < max_retries:
@@ -110,7 +110,7 @@ async def main():
         except discord.errors.HTTPException as e:
             if e.status == 429:
                 wait_time = wait_times[min(retry_count, len(wait_times) - 1)]
-                print(f"⚠️ RATE LIMITED (429). Waiting {wait_time}s before retry...", flush=True)
+                print(f"⚠️ RATE LIMITED (429). Waiting {wait_time}s before retry...", flush=True) 
                 retry_count += 1
                 await asyncio.sleep(wait_time)
             else:
