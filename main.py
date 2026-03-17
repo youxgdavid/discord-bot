@@ -24,7 +24,7 @@ class MyBot(commands.Bot):
         self.site = None
 
     async def setup_hook(self):
-        # Starts aiohttp server for health check inside the bot's loop
+        # Start aiohttp server for health check inside the bot's loop
         app = web.Application()
         app.router.add_get('/', lambda r: web.Response(text="Discord bot is online!"))
         runner = web.AppRunner(app)
@@ -47,6 +47,23 @@ class MyBot(commands.Bot):
 
         # Ensure the sync command itself is in the tree
         self.tree.add_command(self.sync_command)
+
+        # Global Error Handler for App Commands
+        @self.tree.error
+        async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+            if isinstance(error, app_commands.CommandOnCooldown):
+                await interaction.response.send_message(f"⏳ Command on cooldown. Try again in {error.retry_after:.2f}s.", ephemeral=True)
+            elif isinstance(error, app_commands.MissingPermissions):
+                await interaction.response.send_message(f"❌ You lack permissions: {', '.join(error.missing_permissions)}", ephemeral=True)
+            else:
+                print(f"❌ App Command Error: {error}", flush=True)
+                try:
+                    if not interaction.response.is_done():
+                        await interaction.response.send_message(f"❌ An error occurred: {error}", ephemeral=True)
+                    else:
+                        await interaction.followup.send(f"❌ An error occurred: {error}", ephemeral=True)
+                except Exception as e:
+                    print(f"❌ Failed to send error message: {e}", flush=True)
 
         # Robust Sync
         sync_mode = os.getenv("SYNC_COMMANDS", "false").lower()
@@ -88,6 +105,11 @@ class MyBot(commands.Bot):
         print(f"✅ Logged in as {self.user}", flush=True)
         await self.change_presence(activity=discord.Game(name="Casino Games | /balance"))
 
+    async def on_interaction(self, interaction: discord.Interaction):
+        if interaction.type == discord.InteractionType.application_command:
+            print(f"📥 Received slash command: /{interaction.command.name if interaction.command else 'unknown'} from {interaction.user}", flush=True)
+        await super().on_interaction(interaction)
+
 async def main():
     token = os.getenv("DISCORD_TOKEN")
     proxy = os.getenv("DISCORD_PROXY")
@@ -98,7 +120,7 @@ async def main():
 
     retry_count = 0
     max_retries = 10
-    # for faster retries
+    # User requested faster retries
     wait_times = [5, 15, 30, 60, 120, 180, 180, 180, 180, 180]
     
     while retry_count < max_retries:
@@ -110,7 +132,7 @@ async def main():
         except discord.errors.HTTPException as e:
             if e.status == 429:
                 wait_time = wait_times[min(retry_count, len(wait_times) - 1)]
-                print(f"⚠️ RATE LIMITED (429). Waiting {wait_time}s before retry...", flush=True) 
+                print(f"⚠️ RATE LIMITED (429). Waiting {wait_time}s before retry...", flush=True)
                 retry_count += 1
                 await asyncio.sleep(wait_time)
             else:
