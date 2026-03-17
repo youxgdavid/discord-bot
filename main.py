@@ -24,16 +24,6 @@ class MyBot(commands.Bot):
         self.site = None
 
     async def setup_hook(self):
-        # Start aiohttp server
-        app = web.Application()
-        app.router.add_get('/', lambda r: web.Response(text="Discord bot is online!"))
-        runner = web.AppRunner(app)
-        await runner.setup()
-        port = int(os.environ.get('PORT', 8080))
-        self.site = web.TCPSite(runner, '0.0.0.0', port)
-        await self.site.start()
-        print(f"✅ Health check server started on port {port}", flush=True)
-
         print("--- STARTING COG LOAD ---", flush=True)
         # Load all cogs
         for filename in os.listdir('./cogs'):
@@ -118,32 +108,27 @@ async def main():
         print("❌ ERROR: DISCORD_TOKEN not found in environment variables")
         return
 
-    retry_count = 0
-    max_retries = 10
-    # faster retries
-    wait_times = [5, 15, 30, 60, 120, 180, 180, 180, 180, 180]
-    
-    while retry_count < max_retries:
-        bot = MyBot(proxy=proxy)
-        try:
-            print(f"🚀 Attempting login ({retry_count + 1}/{max_retries})...", flush=True)
-            async with bot:
-                await bot.start(token)
-        except discord.errors.HTTPException as e:
-            if e.status == 429:
-                wait_time = wait_times[min(retry_count, len(wait_times) - 1)]
-                print(f"⚠️ RATE LIMITED (429). Waiting {wait_time}s before retry...", flush=True)
-                retry_count += 1
-                await asyncio.sleep(wait_time)
-            else:
-                print(f"❌ HTTP Error: {e}", flush=True)
-                break
-        except Exception as e:
-            print(f"❌ Unexpected error: {e}", flush=True)
-            break
-        finally:
-            if not bot.is_closed():
-                await bot.close()
+    # 1. Start health check server
+    try:
+        app = web.Application()
+        app.router.add_get('/', lambda r: web.Response(text="Discord bot is online!"))
+        runner = web.AppRunner(app)
+        await runner.setup()
+        port = int(os.environ.get('PORT', 8080))
+        site = web.TCPSite(runner, '0.0.0.0', port)
+        await site.start()
+        print(f"✅ Health check server started on port {port}", flush=True)
+    except Exception as e:
+        print(f"⚠️ Warning: Health check server failed to start: {e}", flush=True)
+
+    # 2. Start the Bot
+    bot = MyBot(proxy=proxy)
+    try:
+        print(f"🚀 Attempting login...", flush=True)
+        async with bot:
+            await bot.start(token)
+    except Exception as e:
+        print(f"❌ Critical error during bot execution: {e}", flush=True)
 
 if __name__ == "__main__":
     try:
