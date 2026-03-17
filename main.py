@@ -108,7 +108,7 @@ async def main():
         print("❌ ERROR: DISCORD_TOKEN not found in environment variables")
         return
 
-    # 1. Start health check server
+    # 1. Start health check server IMMEDIATELY for Render's port binding
     try:
         app = web.Application()
         app.router.add_get('/', lambda r: web.Response(text="Discord bot is online!"))
@@ -121,14 +121,11 @@ async def main():
     except Exception as e:
         print(f"⚠️ Warning: Health check server failed to start: {e}", flush=True)
 
-    # 2. Start the Bot
+    # 2. Start the Bot (Single attempt, let Render handle restarts if it fails)
     bot = MyBot(proxy=proxy)
-    try:
-        print(f"🚀 Attempting login...", flush=True)
-        async with bot:
-            await bot.start(token)
-    except Exception as e:
-        print(f"❌ Critical error during bot execution: {e}", flush=True)
+    print(f"🚀 Attempting login...", flush=True)
+    async with bot:
+        await bot.start(token)
 
 if __name__ == "__main__":
     try:
