@@ -24,7 +24,7 @@ class MyBot(commands.Bot):
         self.site = None
 
     async def setup_hook(self):
-        # Start aiohttp server for health check inside the bot's loop
+        # Start aiohttp server
         app = web.Application()
         app.router.add_get('/', lambda r: web.Response(text="Discord bot is online!"))
         runner = web.AppRunner(app)
@@ -120,7 +120,7 @@ async def main():
 
     retry_count = 0
     max_retries = 10
-    # User requested faster retries
+    # faster retries
     wait_times = [5, 15, 30, 60, 120, 180, 180, 180, 180, 180]
     
     while retry_count < max_retries:
