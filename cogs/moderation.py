@@ -241,44 +241,47 @@ class Moderation(commands.Cog):
         if message.author.bot or not message.guild:
             return
         
-        configs = load_ai_mod_configs()
-        guild_id_str = str(message.guild.id)
-        if not configs.get(guild_id_str, False):
-            return
+        try:
+            configs = load_ai_mod_configs()
+            guild_id_str = str(message.guild.id)
+            if not configs.get(guild_id_str, False):
+                return
 
-        # Skip moderation for users with manage_messages permission
-        if message.author.guild_permissions.manage_messages:
-            return
+            # Skip moderation for users with manage_messages permission
+            if message.author.guild_permissions.manage_messages:
+                return
 
-        result = await check_moderation(message.content, self.get_session())
+            result = await check_moderation(message.content, self.get_session())
 
-        if result and result.get("flagged"):
-            categories = [cat for cat, val in result.get("categories", {}).items() if val]
-            reason = f"AI Moderation Flagged: {', '.join(categories)}"
-            
-            try:
-                if not message.channel.permissions_for(message.guild.me).manage_messages:
-                    return
-
-                await message.delete()
+            if result and result.get("flagged"):
+                categories = [cat for cat, val in result.get("categories", {}).items() if val]
+                reason = f"AI Moderation Flagged: {', '.join(categories)}"
                 
-                # Notify in channel
-                embed = discord.Embed(
-                    title="🛡️ AI Moderation Action",
-                    description=f"Message from {message.author.mention} was removed.",
-                    color=discord.Color.red(),
-                    timestamp=datetime.now(timezone.utc)
-                )
-                embed.add_field(name="Reason", value=reason)
-                await message.channel.send(embed=embed, delete_after=10)
-                
-                # Log to DM (optional)
                 try:
-                    await message.author.send(f"⚠️ Your message in **{message.guild.name}** was removed because it triggered our AI moderation filters.\n**Reason:** {reason}")
-                except:
-                    pass
-            except Exception as e:
-                print(f"Error in AI moderation: {e}")
+                    if not message.channel.permissions_for(message.guild.me).manage_messages:
+                        return
+
+                    await message.delete()
+                    
+                    # Notify in channel
+                    embed = discord.Embed(
+                        title="🛡️ AI Moderation Action",
+                        description=f"Message from {message.author.mention} was removed.",
+                        color=discord.Color.red(),
+                        timestamp=datetime.now(timezone.utc)
+                    )
+                    embed.add_field(name="Reason", value=reason)
+                    await message.channel.send(embed=embed, delete_after=10)
+                    
+                    # Log to DM (optional)
+                    try:
+                        await message.author.send(f"⚠️ Your message in **{message.guild.name}** was removed because it triggered our AI moderation filters.\n**Reason:** {reason}")
+                    except:
+                        pass
+                except Exception as e:
+                    print(f"Error in AI moderation action: {e}", flush=True)
+        except Exception as e:
+            print(f"❌ Error in on_message listener: {e}", flush=True)
 
 async def setup(bot: commands.Bot):
     print("DEBUG: Loading Moderation Cog", flush=True)
