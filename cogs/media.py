@@ -31,23 +31,27 @@ class Media(commands.Cog):
             try:
                 await video.save(input_path)
                 
-                # Use subclip
-                full_clip = VideoFileClip(input_path)
-                end_time = start_time + duration if duration > 0 else full_clip.duration
-                clip = full_clip.subclip(start_time, min(end_time, full_clip.duration))
+                # Handle subclip for both moviepy 1.x and 2.x
+                if hasattr(full_clip, 'subclip'):
+                    clip = full_clip.subclip(start_time, min(end_time, full_clip.duration))
+                else: # moviepy 2.0+
+                    clip = full_clip.subclipped(start_time, min(end_time, full_clip.duration))
                 
                 actual_duration = clip.duration
                 if actual_duration > 60:
                     return await interaction.followup.send("❌ Video segment is too long (max 60s for GIF). Trim it using 'duration'.")
 
-                # Heuristic: Target bit budget per second
+                # Handle resize for both moviepy 1.x and 2.x
                 if scale <= 0:
                     if actual_duration > 30: scale = 0.2
                     elif actual_duration > 15: scale = 0.4
                     elif actual_duration > 5: scale = 0.6
                     else: scale = 0.8
-
-                final_clip = clip.resize(scale).set_fps(min(fps, 12))
+                
+                if hasattr(clip, 'resize'):
+                    final_clip = clip.resize(scale).set_fps(min(fps, 12))
+                else: # moviepy 2.0+
+                    final_clip = clip.resized(scale).with_fps(min(fps, 12))
                 
                 # Write to GIF using ffmpeg for best compression
                 # 'opt' can be 'optimizeplus', 'nq' (neuquant)
@@ -55,11 +59,14 @@ class Media(commands.Cog):
                 
                 size = os.path.getsize(output_path)
                 
-                # If it's too big, retry with much lower res/fps
+                # If it's too big, we retry with much lower res/fps
                 if size > MAX_SIZE:
                     print(f"GIF too large ({size/1024/1024:.2f}MB), retrying more aggressive compression...")
                     output_path = os.path.join(tmpdir, "output_tiny.gif")
-                    final_clip.resize(0.5).set_fps(8).write_gif(output_path, program='ffmpeg', opt='nq', fuzz=20)
+                    if hasattr(final_clip, 'resize'):
+                        final_clip.resize(0.5).set_fps(8).write_gif(output_path, program='ffmpeg', opt='nq', fuzz=20)
+                    else:
+                        final_clip.resized(0.5).with_fps(8).write_gif(output_path, program='ffmpeg', opt='nq', fuzz=20)
                     size = os.path.getsize(output_path)
 
                 if size > MAX_SIZE:
