@@ -31,6 +31,10 @@ class Media(commands.Cog):
             try:
                 await video.save(input_path)
                 
+                # Load the full clip
+                full_clip = VideoFileClip(input_path)
+                end_time = start_time + duration if duration > 0 else full_clip.duration
+                
                 # Handle subclip for both moviepy 1.x and 2.x
                 if hasattr(full_clip, 'subclip'):
                     clip = full_clip.subclip(start_time, min(end_time, full_clip.duration))
