@@ -29,6 +29,7 @@ class Media(commands.Cog):
             output_path = os.path.join(tmpdir, "output.gif")
 
             try:
+                full_clip = clip = final_clip = None
                 await video.save(input_path)
                 
                 # Load the full clip
@@ -81,9 +82,9 @@ class Media(commands.Cog):
                     await interaction.followup.send(f"🎬 **Converted!**\n- Size: `{size/1024/1024:.2f}MB` / 8.0MB\n- Duration: `{actual_duration:.1f}s`", file=file)
 
                 # Cleanup
-                clip.close()
-                full_clip.close()
-                final_clip.close()
+                if clip: clip.close()
+                if full_clip: full_clip.close()
+                if final_clip: final_clip.close()
 
             except Exception as e:
                 await interaction.followup.send(f"❌ Failed to convert video: {str(e)}")
