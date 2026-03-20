@@ -4,7 +4,10 @@ from discord.ext import commands
 import os
 import io
 import asyncio
-from moviepy.editor import VideoFileClip
+try:
+    from moviepy.editor import VideoFileClip
+except ImportError:
+    from moviepy.video.io.VideoFileClip import VideoFileClip
 import tempfile
 import time
 
