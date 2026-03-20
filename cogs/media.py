@@ -17,7 +17,7 @@ class Media(commands.Cog):
 
     @app_commands.command(name="vidtogif", description="Convert a video to a GIF (auto-compressed to <8MB)")
     @app_commands.describe(video="The video file to convert", fps="Frame rate (default: 10)", scale="Resize factor (0.1 to 1.0, default: auto)", start_time="Trim start (seconds, default: 0)", duration="Trim duration (seconds, default: full)")
-    async def vidtogif(self, interaction: discord.Interaction, video: discord.Attachment, fps: int = 10, scale: float = None, start_time: float = 0, duration: float = None):
+    async def vidtogif(self, interaction: discord.Interaction, video: discord.Attachment, fps: int = 10, scale: float = 0.0, start_time: float = 0.0, duration: float = 0.0):
         if not video.content_type or not video.content_type.startswith('video/'):
             return await interaction.response.send_message("❌ Please attach a valid video file.", ephemeral=True)
 
@@ -31,9 +31,9 @@ class Media(commands.Cog):
             try:
                 await video.save(input_path)
                 
-                # Use subclip if duration is specified
+                # Use subclip
                 full_clip = VideoFileClip(input_path)
-                end_time = start_time + duration if duration else full_clip.duration
+                end_time = start_time + duration if duration > 0 else full_clip.duration
                 clip = full_clip.subclip(start_time, min(end_time, full_clip.duration))
                 
                 actual_duration = clip.duration
@@ -41,9 +41,7 @@ class Media(commands.Cog):
                     return await interaction.followup.send("❌ Video segment is too long (max 60s for GIF). Trim it using 'duration'.")
 
                 # Heuristic: Target bit budget per second
-                # 8MB = 64Mbits. 60s = ~1Mbit/s. 
-                # GIF overhead is huge. We aim for ~0.8MB per 10s.
-                if scale is None:
+                if scale <= 0:
                     if actual_duration > 30: scale = 0.2
                     elif actual_duration > 15: scale = 0.4
                     elif actual_duration > 5: scale = 0.6
@@ -57,7 +55,7 @@ class Media(commands.Cog):
                 
                 size = os.path.getsize(output_path)
                 
-                # If it's too big, we retry with much lower res/fps
+                # If it's too big, retry with much lower res/fps
                 if size > MAX_SIZE:
                     print(f"GIF too large ({size/1024/1024:.2f}MB), retrying more aggressive compression...")
                     output_path = os.path.join(tmpdir, "output_tiny.gif")
