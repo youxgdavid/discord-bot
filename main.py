@@ -42,10 +42,22 @@ class MyBot(commands.Bot):
         @self.tree.error
         async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
             if isinstance(error, app_commands.CommandOnCooldown):
-                await interaction.response.send_message(f"⏳ Command on cooldown. Try again in {error.retry_after:.2f}s.", ephemeral=True)
+                try:
+                    await interaction.response.send_message(f"⏳ Command on cooldown. Try again in {error.retry_after:.2f}s.", ephemeral=True)
+                except Exception:
+                    pass
             elif isinstance(error, app_commands.MissingPermissions):
-                await interaction.response.send_message(f"❌ You lack permissions: {', '.join(error.missing_permissions)}", ephemeral=True)
+                try:
+                    await interaction.response.send_message(f"❌ You lack permissions: {', '.join(error.missing_permissions)}", ephemeral=True)
+                except Exception:
+                    pass
             else:
+                error_str = str(error)
+                if "429" in error_str or "1015" in error_str:
+                    print(f"⚠️ App Command Rate Limited (429/1015): {error}", flush=True)
+                    # Don't try to send a message back if we are rate limited, it will likely fail again.
+                    return
+
                 print(f"❌ App Command Error: {error}", flush=True)
                 try:
                     if not interaction.response.is_done():
@@ -53,7 +65,10 @@ class MyBot(commands.Bot):
                     else:
                         await interaction.followup.send(f"❌ An error occurred: {error}", ephemeral=True)
                 except Exception as e:
-                    print(f"❌ Failed to send error message: {e}", flush=True)
+                    if "429" in str(e) or "1015" in str(e):
+                        print("⚠️ Failed to send error message due to rate limit (429/1015).", flush=True)
+                    else:
+                        print(f"❌ Failed to send error message: {e}", flush=True)
 
         # Robust Sync
         sync_mode = os.getenv("SYNC_COMMANDS", "false").lower()
