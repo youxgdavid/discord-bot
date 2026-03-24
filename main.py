@@ -6,7 +6,7 @@ import asyncio
 from aiohttp import web
 from dotenv import load_dotenv
 
-# Monkeypatch for PIL.Image.ANTIALIAS as its bitching
+#PIL.Image.ANTIALIAS 
 try:
     import PIL.Image
     if not hasattr(PIL.Image, 'ANTIALIAS'):
@@ -14,6 +14,14 @@ try:
             PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
         elif hasattr(PIL.Image, 'Resampling'):
             PIL.Image.ANTIALIAS = PIL.Image.Resampling.LANCZOS
+except (ImportError, AttributeError):
+    pass
+
+# numpy.ndarray.tostring
+try:
+    import numpy as np
+    if not hasattr(np.ndarray, 'tostring'):
+        np.ndarray.tostring = np.ndarray.tobytes
 except (ImportError, AttributeError):
     pass
 
