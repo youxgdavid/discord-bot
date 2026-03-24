@@ -17,14 +17,6 @@ try:
 except (ImportError, AttributeError):
     pass
 
-# numpy.ndarray.tostring
-try:
-    import numpy as np
-    if not hasattr(np.ndarray, 'tostring'):
-        np.ndarray.tostring = np.ndarray.tobytes
-except (ImportError, AttributeError):
-    pass
-
 # Load environment variables
 load_dotenv()
 
