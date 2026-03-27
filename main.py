@@ -6,18 +6,6 @@ import asyncio
 from aiohttp import web
 from dotenv import load_dotenv
 
-#PIL.Image.ANTIALIAS 
-try:
-    import PIL.Image
-    if not hasattr(PIL.Image, 'ANTIALIAS'):
-        if hasattr(PIL.Image, 'LANCZOS'):
-            PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
-        elif hasattr(PIL.Image, 'Resampling'):
-            PIL.Image.ANTIALIAS = PIL.Image.Resampling.LANCZOS
-except (ImportError, AttributeError):
-    pass
-
-# Load environment variables
 load_dotenv()
 
 # Discord client and intents
