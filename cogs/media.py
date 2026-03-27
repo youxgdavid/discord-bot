@@ -50,9 +50,8 @@ class Media(commands.Cog):
                 # Use moviepy 2.0+ syntax for resizing and setting fps
                 final_clip = clip.resized(scale).with_fps(min(fps, 12))
                 
-                # Write to GIF using ffmpeg for best compression
-                # 'opt' can be 'optimizeplus', 'nq' (neuquant)
-                final_clip.write_gif(output_path, program='ffmpeg', opt='nq', fuzz=10)
+                # Write to GIF
+                final_clip.write_gif(output_path)
                 
                 size = os.path.getsize(output_path)
                 
@@ -60,7 +59,7 @@ class Media(commands.Cog):
                 if size > MAX_SIZE:
                     print(f"GIF too large ({size/1024/1024:.2f}MB), retrying more aggressive compression...")
                     output_path = os.path.join(tmpdir, "output_tiny.gif")
-                    final_clip.resized(0.5).with_fps(8).write_gif(output_path, program='ffmpeg', opt='nq', fuzz=20)
+                    final_clip.resized(0.5).with_fps(8).write_gif(output_path)
                     size = os.path.getsize(output_path)
 
                 if size > MAX_SIZE:
