@@ -42,6 +42,7 @@ Your all-in-one **Discord entertainment bot**
 | Command | Description |
 |---------|-------------|
 | `/ping` | Check bot latency |
+| `/videotogif` | Convert any 60 second video clip to a gif. |
 | `/quote` | Quote a message by ID or URL - Customise to your liking |
 | `/ai_mod toggle` | Automatically detects harmful messages|
 | `/Set_fm` | Displays the currect playing track |
