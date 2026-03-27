@@ -5,5 +5,5 @@ deep-translator>=1.11.4
 flask>=2.0.0
 python-dotenv>=1.0.0
 Pillow>=9.0.0
-moviepy==1.0.3
+moviepy>=2.1.1
 numpy>=1.20.0
